@@ -227,8 +227,19 @@
 
         const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } = window.firebase;
 
+        // ==========================================================================================================
+        //  Код был обновлен для использования переменных среды, предоставляемых Canvas.
+        //  Больше не нужно вручную вставлять ключи Firebase или Gemini API.
+        // ==========================================================================================================
+        
+        // Переменные среды предоставляются автоматически
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // API-ключ Gemini также предоставляется автоматически
+        const apiKey = "";
+        
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -236,8 +247,7 @@
 
         let userId = null;
         let isAuthReady = false;
-
-        const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
+        
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
 
@@ -284,13 +294,13 @@
                 console.log("Authenticated with user ID:", userId);
             } else {
                 try {
-                    if (typeof __initial_auth_token !== 'undefined') {
-                        await signInWithCustomToken(auth, __initial_auth_token);
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
                     } else {
-                         await signInAnonymously(auth);
+                        await signInAnonymously(auth);
                     }
                 } catch (error) {
-                    console.error("Error during anonymous sign-in:", error);
+                    console.error("Error during sign-in:", error);
                 }
             }
         });
