@@ -244,9 +244,10 @@
         import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
         
         // ==========================================================================================================
-        //  КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Теперь кнопка "Начать" просто переключает экраны, а вся логика инициализации
-        //  вынесена в отдельную функцию `initApp()`, которая вызывается после нажатия. Это гарантирует
-        //  мгновенный отклик и надежный запуск приложения.
+        //  КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Логика запуска переработана. Кнопка "Начать" теперь запускает
+        //  один, последовательный процесс инициализации, который гарантирует, что все асинхронные
+        //  операции завершены до того, как пользователь увидит основной интерфейс. Это устраняет
+        //  потенциальные "race conditions", которые могут проявляться в Netlify.
         // ==========================================================================================================
         const firebaseConfig = JSON.parse(__firebase_config);
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -797,7 +798,7 @@
                 
             } catch (error) {
                 console.error("Критическая ошибка при запуске приложения:", error);
-                showModal("Критическая ошибка при запуске приложения. Проверьте консоль для получения подробной информации.");
+                throw error; // Re-throw the error to be caught by the calling function
             }
         }
         
@@ -830,18 +831,26 @@
         }
 
         // Handles the click event for the "Start" button
-        async function handleStartClick() {
+        startBtn.addEventListener('click', async () => {
              console.log("Кнопка 'Начать' была нажата.");
              startBtn.disabled = true;
-             startBtn.classList.add('opacity-50', 'cursor-not-allowed');
              startBtn.textContent = 'Загрузка...';
-             startScreen.style.display = 'none';
-             appContent.style.display = 'block';
-             await initApp();
-        }
+             startBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
-        // Attaches the "Start" button listener immediately
-        startBtn.addEventListener('click', handleStartClick);
+             try {
+                // Initialize the app. This is an async call.
+                await initApp();
+                // If initialization is successful, hide the start screen and show the app content
+                startScreen.style.display = 'none';
+                appContent.style.display = 'block';
+             } catch (error) {
+                // If there's an error, show a modal and reset the button
+                showModal("Не удалось запустить приложение. Пожалуйста, попробуйте еще раз.");
+                startBtn.disabled = false;
+                startBtn.textContent = 'Начать';
+                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+             }
+        });
 
         // Starts a loading countdown timer
         function startCountdown() {
@@ -954,7 +963,7 @@
                 2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer.
                 3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
                 4. The correct answer label (e.g., "A").
-                5. A brief explanation (1-2 sentences) in Russian for the correct answer.
+                5. A brief explanation in Russian for the correct answer.
                 6. Identify ${difficulty === 'hard' ? '6-7' : '4-5'} English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form (preserving its original casing from the passage), its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                 ${highlightInstruction}
             `;
