@@ -181,7 +181,7 @@
         </button>
 
         <div id="loadingIndicator" class="loading-indicator" style="display: none;">
-            <!-- Questions will be loaded here -->
+            <!-- Loading spinner and timer will be inserted here by JavaScript -->
         </div>
 
         <div id="questionsContainer" class="space-y-10">
@@ -361,6 +361,9 @@
         document.addEventListener('keypress', resetInactivityTimer);
         document.addEventListener('click', resetInactivityTimer);
         document.addEventListener('scroll', resetInactivityTimer);
+
+        // Add a listener to save the session when the user closes the tab
+        window.addEventListener('beforeunload', saveSession);
 
         // Initial check for activity when the page loads
         resetInactivityTimer();
