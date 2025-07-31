@@ -236,11 +236,10 @@
         import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
         
         // ==========================================================================================================
-        //  Ключевое изменение: теперь приложение инициализируется и аутентифицирует пользователя сразу,
-        //  как только загружается скрипт. Это гарантирует, что все сервисы готовы,
-        //  прежде чем пользователь сможет взаимодействовать с UI.
+        //  КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Теперь приложение инициализируется только после нажатия кнопки "Начать".
+        //  Это гарантирует, что все сервисы готовы, прежде чем пользователь сможет взаимодействовать с UI,
+        //  и устраняет проблему "неработающей" кнопки.
         // ==========================================================================================================
-
         const firebaseConfig = JSON.parse(__firebase_config);
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
@@ -794,23 +793,21 @@
         // Sets up the initial UI based on whether an active session exists
         async function setupUI() {
             if (!isAuthReady) return;
+            startScreen.style.display = 'none';
+            appContent.style.display = 'block';
+
             const hasActive = await checkForActiveSession();
             
             if (hasActive) {
                 const sessionResumed = await loadSessionFromFirestore();
                 if (sessionResumed) {
-                    startScreen.style.display = 'none';
-                    appContent.style.display = 'block';
                     displayCurrentQuestion();
                     updateViewResultsButtonState(true);
                 } else {
-                    startScreen.style.display = 'none';
-                    appContent.style.display = 'block';
+                    questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
                     updateViewResultsButtonState(false);
                 }
             } else {
-                startScreen.style.display = 'none';
-                appContent.style.display = 'block';
                 questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
                 updateViewResultsButtonState(false);
             }
@@ -825,16 +822,15 @@
         // Handles the click event for the "Start" button
         async function handleStartClick() {
              console.log("Кнопка 'Начать' была нажата.");
-             startScreen.style.display = 'none';
-             appContent.style.display = 'block';
+             startBtn.disabled = true;
+             startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+             startBtn.textContent = 'Загрузка...';
+             await initializeFirebaseAndAuth();
         }
 
         // Attaches the "Start" button listener immediately
         startBtn.addEventListener('click', handleStartClick);
 
-        // This function is the main entry point to start the app logic.
-        // It is called immediately to set everything up.
-        initializeFirebaseAndAuth();
 
         // Starts a loading countdown timer
         function startCountdown() {
