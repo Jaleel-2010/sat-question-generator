@@ -172,6 +172,14 @@
         .modal-button:hover {
             background-color: #3182ce;
         }
+        .loading-indicator {
+            text-align: center;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            background-color: #e2e8f0;
+            color: #4a5568;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -236,9 +244,9 @@
         import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
         
         // ==========================================================================================================
-        //  КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Теперь приложение инициализируется только после нажатия кнопки "Начать".
-        //  Это гарантирует, что все сервисы готовы, прежде чем пользователь сможет взаимодействовать с UI,
-        //  и устраняет проблему "неработающей" кнопки.
+        //  КЛЮЧЕВОЕ ИЗМЕНЕНИЕ: Теперь кнопка "Начать" просто переключает экраны, а вся логика инициализации
+        //  вынесена в отдельную функцию `initApp()`, которая вызывается после нажатия. Это гарантирует
+        //  мгновенный отклик и надежный запуск приложения.
         // ==========================================================================================================
         const firebaseConfig = JSON.parse(__firebase_config);
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -757,19 +765,22 @@
         document.addEventListener('scroll', resetInactivityTimer);
 
         // Initializes Firebase and user authentication
-        async function initializeFirebaseAndAuth() {
+        async function initApp() {
+            console.log("Начало инициализации приложения...");
             try {
-                console.log("Начало инициализации приложения.");
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
-
+                
+                let authPromise;
                 if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
+                    authPromise = signInWithCustomToken(auth, initialAuthToken);
                 } else {
-                    await signInAnonymously(auth);
+                    authPromise = signInAnonymously(auth);
                 }
 
+                await authPromise;
+                
                 await new Promise(resolve => onAuthStateChanged(auth, user => {
                     if (user) {
                         userId = user.uid;
@@ -783,7 +794,7 @@
                 }));
                 
                 await setupUI();
-
+                
             } catch (error) {
                 console.error("Критическая ошибка при запуске приложения:", error);
                 showModal("Критическая ошибка при запуске приложения. Проверьте консоль для получения подробной информации.");
@@ -793,8 +804,6 @@
         // Sets up the initial UI based on whether an active session exists
         async function setupUI() {
             if (!isAuthReady) return;
-            startScreen.style.display = 'none';
-            appContent.style.display = 'block';
 
             const hasActive = await checkForActiveSession();
             
@@ -811,7 +820,8 @@
                 questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
                 updateViewResultsButtonState(false);
             }
-            // Add event listeners only after the app content is displayed
+            
+            // Add event listeners only after the app is initialized and UI is set up
             generateBtn.addEventListener('click', generateAllQuestions);
             nextBtn.addEventListener('click', handleNextQuestion);
             saveAndExitBtn.addEventListener('click', handleSaveAndExit);
@@ -825,28 +835,31 @@
              startBtn.disabled = true;
              startBtn.classList.add('opacity-50', 'cursor-not-allowed');
              startBtn.textContent = 'Загрузка...';
-             await initializeFirebaseAndAuth();
+             startScreen.style.display = 'none';
+             appContent.style.display = 'block';
+             await initApp();
         }
 
         // Attaches the "Start" button listener immediately
         startBtn.addEventListener('click', handleStartClick);
 
-
         // Starts a loading countdown timer
         function startCountdown() {
             let timeLeft = COUNTDOWN_DURATION;
             const countdownEl = document.getElementById('countdownTimer');
-            countdownEl.textContent = `Приблизительное время: ${timeLeft} секунд`;
+            if (countdownEl) {
+                countdownEl.textContent = `Приблизительное время: ${timeLeft} секунд`;
 
-            countdownIntervalId = setInterval(() => {
-                timeLeft--;
-                if (timeLeft >= 0) {
-                    countdownEl.textContent = `Приблизительное время: ${timeLeft} секунд`;
-                } else {
-                    countdownEl.textContent = 'Генерация занимает больше времени, чем обычно...';
-                    clearInterval(countdownIntervalId);
-                }
-            }, 1000);
+                countdownIntervalId = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft >= 0) {
+                        countdownEl.textContent = `Приблизительное время: ${timeLeft} секунд`;
+                    } else {
+                        countdownEl.textContent = 'Генерация занимает больше времени, чем обычно...';
+                        clearInterval(countdownIntervalId);
+                    }
+                }, 1000);
+            }
         }
 
         // Shows the loading indicator
