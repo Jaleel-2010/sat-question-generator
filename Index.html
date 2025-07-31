@@ -6,18 +6,6 @@
     <title>Генератор вопросов SAT</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase CDN -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // Expose Firebase modules globally to be used in the main script block
-        window.firebase = {
-            initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
-            getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc
-        };
-    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -241,14 +229,16 @@
     </div>
 
     <script type="module">
+        // Import all necessary Firebase and Gemini modules in a single block for better management
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
 
-        // Retrieve Firebase modules from the global window object
-        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } = window.firebase;
-        
         // ==========================================================================================================
-        //  The code has been updated to use Canvas-provided environment variables and a more direct
-        //  initialization flow, which should resolve issues with the 'Start' button not working.
+        //  The code has been updated to use a more robust initialization flow within a single module script.
+        //  This should resolve any potential timing or loading issues that may have prevented the 'Start' button
+        //  from working. Added console logs for better debugging.
         // ==========================================================================================================
         
         // Canvas environment variables are provided automatically
@@ -260,13 +250,14 @@
         
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        let app, auth, db; // Declare variables globally for broader access
+        let app, auth, db; // Declare variables for global access
         let userId = null;
         let isAuthReady = false;
         
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
 
+        // Get DOM elements
         const startScreen = document.getElementById('startScreen');
         const startBtn = document.getElementById('startBtn');
         const appContent = document.getElementById('appContent');
@@ -780,7 +771,8 @@
         document.addEventListener('scroll', resetInactivityTimer);
 
         async function initializeAppContent() {
-            console.log("Attempting to initialize Firebase and sign in...");
+            console.log("Кнопка 'Начать' нажата! Инициализация приложения...");
+            
             try {
                 // Initialize Firebase services
                 app = initializeApp(firebaseConfig);
@@ -793,6 +785,7 @@
                 } else {
                     await signInAnonymously(auth);
                 }
+                console.log("Попытка входа в систему Firebase...");
 
                 // Wait for the auth state to be confirmed
                 await new Promise(resolve => onAuthStateChanged(auth, user => {
@@ -800,12 +793,12 @@
                         userId = user.uid;
                         userIdDisplay.textContent = userId;
                         isAuthReady = true;
-                        console.log("Authenticated with user ID:", userId);
+                        console.log("Аутентификация успешна. ID пользователя:", userId);
                     }
                     resolve();
                 }));
 
-                console.log("Firebase initialization and sign-in successful.");
+                console.log("Инициализация Firebase и вход в систему успешно завершены.");
 
                 startScreen.style.display = 'none';
                 appContent.style.display = 'block';
@@ -838,12 +831,20 @@
                 }
                 resetInactivityTimer();
             } catch (error) {
-                console.error("Critical error during app initialization:", error);
+                console.error("Критическая ошибка при запуске приложения:", error);
                 showModal("Критическая ошибка при запуске приложения. Проверьте консоль для получения подробной информации.");
             }
         }
 
-        startBtn.addEventListener('click', initializeAppContent);
+        // Attach event listeners after the DOM is fully loaded to ensure elements exist
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM полностью загружен. Установка обработчиков событий.");
+            startBtn.addEventListener('click', initializeAppContent);
+            generateBtn.addEventListener('click', generateAllQuestions);
+            nextBtn.addEventListener('click', handleNextQuestion);
+            saveAndExitBtn.addEventListener('click', handleSaveAndExit);
+            viewResultsBtn.addEventListener('click', loadCompletedTests);
+        });
 
         function startCountdown() {
             let timeLeft = COUNTDOWN_DURATION;
@@ -1081,11 +1082,6 @@
         async function handleSaveAndExit() {
             await logoutUser();
         }
-        
-        generateBtn.addEventListener('click', generateAllQuestions);
-        nextBtn.addEventListener('click', handleNextQuestion);
-        saveAndExitBtn.addEventListener('click', handleSaveAndExit);
-        viewResultsBtn.addEventListener('click', loadCompletedTests);
     </script>
 </body>
 </html>
