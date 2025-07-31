@@ -12,6 +12,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
+        // Expose Firebase modules globally to be used in the main script block
         window.firebase = {
             initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
             getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc
@@ -152,6 +153,37 @@
             border-style: solid;
             border-color: #333 transparent transparent transparent;
         }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            text-align: center;
+        }
+        .modal-button {
+            background-color: #4299e1;
+            color: white;
+            font-weight: bold;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .modal-button:hover {
+            background-color: #3182ce;
+        }
     </style>
 </head>
 <body>
@@ -211,26 +243,24 @@
     <script type="module">
         import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
 
+        // Retrieve Firebase modules from the global window object
         const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } = window.firebase;
-
+        
         // ==========================================================================================================
-        //  Код был обновлен для использования переменных среды, предоставляемых Canvas.
-        //  Больше не нужно вручную вставлять ключи Firebase или Gemini API.
+        //  The code has been updated to use Canvas-provided environment variables and a more direct
+        //  initialization flow, which should resolve issues with the 'Start' button not working.
         // ==========================================================================================================
         
-        // Переменные среды предоставляются автоматически
+        // Canvas environment variables are provided automatically
         const firebaseConfig = JSON.parse(__firebase_config);
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // API-ключ Gemini также предоставляется автоматически
+        // Gemini API key is also provided automatically
         const apiKey = "";
         
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
+        let app, auth, db; // Declare variables globally for broader access
         let userId = null;
         let isAuthReady = false;
         
@@ -269,24 +299,22 @@
         let countdownIntervalId;
         const COUNTDOWN_DURATION = 90;
 
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-                userIdDisplay.textContent = userId;
-                isAuthReady = true;
-                console.log("Authenticated with user ID:", userId);
-            } else {
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error("Error during sign-in:", error);
-                }
-            }
-        });
+        // Function to display a simple modal for errors or confirmations
+        function showModal(message, isError = false) {
+            const modalOverlay = document.createElement('div');
+            modalOverlay.className = 'modal-overlay';
+            modalOverlay.innerHTML = `
+                <div class="modal-content">
+                    <p class="text-lg font-semibold mb-4 text-gray-800">${message}</p>
+                    <button id="modalCloseBtn" class="modal-button">ОК</button>
+                </div>
+            `;
+            document.body.appendChild(modalOverlay);
+            document.getElementById('modalCloseBtn').addEventListener('click', () => {
+                document.body.removeChild(modalOverlay);
+            });
+            console.error(message);
+        }
 
         function updateViewResultsButtonState(disabled) {
             viewResultsBtn.disabled = disabled;
@@ -752,40 +780,67 @@
         document.addEventListener('scroll', resetInactivityTimer);
 
         async function initializeAppContent() {
-            if (!isAuthReady) {
-                await new Promise(resolve => onAuthStateChanged(auth, () => resolve()));
-            }
+            console.log("Attempting to initialize Firebase and sign in...");
+            try {
+                // Initialize Firebase services
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
 
-            startScreen.style.display = 'none';
-            appContent.style.display = 'block';
-            
-            const hasActive = await checkForActiveSession();
-            
-            // Проверяем, есть ли активная сессия и что делать дальше
-            if (hasActive) {
-                const sessionResumed = await loadSessionFromFirestore();
-                if (sessionResumed) {
-                    displayCurrentQuestion();
-                    updateViewResultsButtonState(true); // Кнопка отключена, т.к. сессия продолжается
+                // Sign in with the provided token or anonymously
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
                 } else {
-                    // Если пользователь отказался продолжать, кнопка должна быть активна
+                    await signInAnonymously(auth);
+                }
+
+                // Wait for the auth state to be confirmed
+                await new Promise(resolve => onAuthStateChanged(auth, user => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = userId;
+                        isAuthReady = true;
+                        console.log("Authenticated with user ID:", userId);
+                    }
+                    resolve();
+                }));
+
+                console.log("Firebase initialization and sign-in successful.");
+
+                startScreen.style.display = 'none';
+                appContent.style.display = 'block';
+                
+                const hasActive = await checkForActiveSession();
+                
+                // Check if an active session exists
+                if (hasActive) {
+                    const sessionResumed = await loadSessionFromFirestore();
+                    if (sessionResumed) {
+                        displayCurrentQuestion();
+                        updateViewResultsButtonState(true); // Button is disabled because a session is in progress
+                    } else {
+                        // If the user declined to resume, the button should be active
+                        questionsContainer.style.display = 'block';
+                        resultsContainer.style.display = 'none';
+                        questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
+                        nextBtn.style.display = 'none';
+                        saveAndExitBtn.style.display = 'none';
+                        updateViewResultsButtonState(false); // Explicitly enable the button
+                    }
+                } else {
+                    // If no active session exists, the button should be active by default
                     questionsContainer.style.display = 'block';
                     resultsContainer.style.display = 'none';
                     questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
                     nextBtn.style.display = 'none';
                     saveAndExitBtn.style.display = 'none';
-                    updateViewResultsButtonState(false); // Явно включаем кнопку
+                    updateViewResultsButtonState(false); // Explicitly enable the button
                 }
-            } else {
-                // Если нет активной сессии, кнопка должна быть активна по умолчанию
-                questionsContainer.style.display = 'block';
-                resultsContainer.style.display = 'none';
-                questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
-                nextBtn.style.display = 'none';
-                saveAndExitBtn.style.display = 'none';
-                updateViewResultsButtonState(false); // Явно включаем кнопку
+                resetInactivityTimer();
+            } catch (error) {
+                console.error("Critical error during app initialization:", error);
+                showModal("Критическая ошибка при запуске приложения. Проверьте консоль для получения подробной информации.");
             }
-            resetInactivityTimer();
         }
 
         startBtn.addEventListener('click', initializeAppContent);
