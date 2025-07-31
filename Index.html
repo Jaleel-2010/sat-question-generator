@@ -89,7 +89,7 @@
             color: #4a5568;
             display: none;
         }
-        .login-container {
+        .start-container {
             background-color: #ffffff;
             border-radius: 0.75rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
@@ -98,15 +98,7 @@
             width: 90%;
             text-align: center;
         }
-        .login-input {
-            width: 100%;
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-            border: 1px solid #cbd5e1;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-        }
-        .login-button {
+        .start-button {
             width: 100%;
             background-color: #4299e1;
             color: white;
@@ -115,13 +107,8 @@
             border-radius: 0.5rem;
             transition: background-color 0.2s ease-in-out;
         }
-        .login-button:hover {
+        .start-button:hover {
             background-color: #3182ce;
-        }
-        .error-message {
-            color: #ef4444;
-            margin-top: 1rem;
-            font-size: 0.9rem;
         }
         .tooltip-container {
             position: relative;
@@ -168,11 +155,10 @@
     </style>
 </head>
 <body>
-    <div id="loginScreen" class="login-container">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">Вход в Генератор вопросов SAT</h2>
-        <input type="password" id="passwordInput" class="login-input" placeholder="Введите пароль">
-        <button id="loginBtn" class="login-button">Войти</button>
-        <p id="loginError" class="error-message" style="display: none;">Неверный пароль. Попробуйте снова.</p>
+    <div id="startScreen" class="start-container">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Добро пожаловать в Генератор вопросов SAT</h2>
+        <p class="text-gray-600 mb-6">Нажмите кнопку ниже, чтобы начать.</p>
+        <button id="startBtn" class="start-button">Начать</button>
     </div>
 
     <div id="appContent" class="container" style="display: none;">
@@ -251,10 +237,8 @@
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
 
-        const loginScreen = document.getElementById('loginScreen');
-        const passwordInput = document.getElementById('passwordInput');
-        const loginBtn = document.getElementById('loginBtn');
-        const loginError = document.getElementById('loginError');
+        const startScreen = document.getElementById('startScreen');
+        const startBtn = document.getElementById('startBtn');
         const appContent = document.getElementById('appContent');
         const userIdDisplay = document.getElementById('userIdDisplay').querySelector('span');
         const generateBtn = document.getElementById('generateBtn');
@@ -280,7 +264,6 @@
         let currentCategoryIndex = 0;
         let currentQuestionIndex = 0;
 
-        const CORRECT_PASSWORD = "Jaleel2010";
         let inactivityTimer;
         const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
         let countdownIntervalId;
@@ -748,9 +731,7 @@
             }
             
             appContent.style.display = 'none';
-            loginScreen.style.display = 'block';
-            passwordInput.value = '';
-            loginError.style.display = 'none';
+            startScreen.style.display = 'block';
             allGeneratedQuestions = {};
             currentCategoryIndex = 0;
             currentQuestionIndex = 0;
@@ -770,35 +751,24 @@
         document.addEventListener('click', resetInactivityTimer);
         document.addEventListener('scroll', resetInactivityTimer);
 
-        loginBtn.addEventListener('click', async () => {
-            if (passwordInput.value === CORRECT_PASSWORD) {
-                if (!isAuthReady) {
-                    await new Promise(resolve => onAuthStateChanged(auth, () => resolve()));
-                }
+        async function initializeAppContent() {
+            if (!isAuthReady) {
+                await new Promise(resolve => onAuthStateChanged(auth, () => resolve()));
+            }
 
-                loginScreen.style.display = 'none';
-                appContent.style.display = 'block';
-                loginError.style.display = 'none';
-                
-                const hasActive = await checkForActiveSession();
-                
-                // Проверяем, есть ли активная сессия и что делать дальше
-                if (hasActive) {
-                    const sessionResumed = await loadSessionFromFirestore();
-                    if (sessionResumed) {
-                        displayCurrentQuestion();
-                        updateViewResultsButtonState(true); // Кнопка отключена, т.к. сессия продолжается
-                    } else {
-                        // Если пользователь отказался продолжать, кнопка должна быть активна
-                        questionsContainer.style.display = 'block';
-                        resultsContainer.style.display = 'none';
-                        questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
-                        nextBtn.style.display = 'none';
-                        saveAndExitBtn.style.display = 'none';
-                        updateViewResultsButtonState(false); // Явно включаем кнопку
-                    }
+            startScreen.style.display = 'none';
+            appContent.style.display = 'block';
+            
+            const hasActive = await checkForActiveSession();
+            
+            // Проверяем, есть ли активная сессия и что делать дальше
+            if (hasActive) {
+                const sessionResumed = await loadSessionFromFirestore();
+                if (sessionResumed) {
+                    displayCurrentQuestion();
+                    updateViewResultsButtonState(true); // Кнопка отключена, т.к. сессия продолжается
                 } else {
-                    // Если нет активной сессии, кнопка должна быть активна по умолчанию
+                    // Если пользователь отказался продолжать, кнопка должна быть активна
                     questionsContainer.style.display = 'block';
                     resultsContainer.style.display = 'none';
                     questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
@@ -806,17 +776,19 @@
                     saveAndExitBtn.style.display = 'none';
                     updateViewResultsButtonState(false); // Явно включаем кнопку
                 }
-                resetInactivityTimer();
             } else {
-                loginError.style.display = 'block';
+                // Если нет активной сессии, кнопка должна быть активна по умолчанию
+                questionsContainer.style.display = 'block';
+                resultsContainer.style.display = 'none';
+                questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
+                nextBtn.style.display = 'none';
+                saveAndExitBtn.style.display = 'none';
+                updateViewResultsButtonState(false); // Явно включаем кнопку
             }
-        });
+            resetInactivityTimer();
+        }
 
-        passwordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                loginBtn.click();
-            }
-        });
+        startBtn.addEventListener('click', initializeAppContent);
 
         function startCountdown() {
             let timeLeft = COUNTDOWN_DURATION;
