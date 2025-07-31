@@ -6,69 +6,80 @@
     <title>Генератор вопросов SAT</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase CDN -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        window.firebase = {
+            initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
+            getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc
+        };
+    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Light blue-gray background */
+            background-color: #f0f4f8;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh; /* Ensure body takes full viewport height */
+            min-height: 100vh;
         }
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
-            width: 100%; /* Ensure container takes full width on smaller screens */
+            width: 100%;
         }
         .section-title {
-            border-bottom: 2px solid #cbd5e1; /* Light gray border */
+            border-bottom: 2px solid #cbd5e1;
             padding-bottom: 0.5rem;
             margin-bottom: 1.5rem;
         }
         .question-card {
             background-color: #ffffff;
-            border-radius: 0.75rem; /* Rounded corners */
+            border-radius: 0.75rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            border: 1px solid #e2e8f0; /* Light border */
+            border: 1px solid #e2e8f0;
         }
         .question-passage {
             font-style: italic;
-            color: #4a5568; /* Dark gray text */
+            color: #4a5568;
             margin-bottom: 1rem;
             line-height: 1.6;
         }
         .question-text {
             font-weight: 600;
             margin-bottom: 0.75rem;
-            color: #2d3748; /* Darker gray text */
+            color: #2d3748;
         }
         .option-item {
             margin-bottom: 0.5rem;
             padding: 0.5rem 0;
             border-radius: 0.5rem;
-            cursor: pointer; /* Indicate clickable */
+            cursor: pointer;
             transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
-            border: 1px solid transparent; /* Default transparent border */
+            border: 1px solid transparent;
         }
         .option-item:hover:not(.disabled) {
-            background-color: #f3f4f6; /* Light gray on hover */
+            background-color: #f3f4f6;
         }
         .option-item.correct {
-            background-color: #d1fae5; /* Light green for correct answer */
-            border-color: #34d399; /* Green border */
+            background-color: #d1fae5;
+            border-color: #34d399;
             font-weight: 500;
         }
         .option-item.incorrect {
-            background-color: #fee2e2; /* Light red for incorrect answer */
-            border-color: #ef4444; /* Red border */
+            background-color: #fee2e2;
+            border-color: #ef4444;
             font-weight: 500;
         }
         .option-item.disabled {
-            pointer-events: none; /* Disable clicks */
-            opacity: 0.8; /* Slightly dim disabled options */
+            pointer-events: none;
+            opacity: 0.8;
         }
         .explanation {
             margin-top: 1rem;
@@ -76,7 +87,7 @@
             border-top: 1px dashed #e2e8f0;
             font-size: 0.9rem;
             color: #4a5568;
-            display: none; /* Hidden by default */
+            display: none;
         }
         .login-container {
             background-color: #ffffff;
@@ -97,7 +108,7 @@
         }
         .login-button {
             width: 100%;
-            background-color: #4299e1; /* Blue */
+            background-color: #4299e1;
             color: white;
             font-weight: bold;
             padding: 0.75rem;
@@ -105,41 +116,40 @@
             transition: background-color 0.2s ease-in-out;
         }
         .login-button:hover {
-            background-color: #3182ce; /* Darker blue */
+            background-color: #3182ce;
         }
         .error-message {
             color: #ef4444;
             margin-top: 1rem;
             font-size: 0.9rem;
         }
-        /* Tooltip styles */
         .tooltip-container {
             position: relative;
             display: inline-block;
             cursor: help;
-            border-bottom: 1px dotted #94a3b8; /* Dotted underline for tooltip words */
+            border-bottom: 1px dotted #94a3b8;
         }
         .tooltip-text {
             visibility: hidden;
-            width: auto; /* Adjust width based on content */
-            min-width: 180px; /* Changed: Added min-width for better spacing */
-            max-width: 500px; /* Changed: Increased max-width for more words */
+            width: auto;
+            min-width: 180px;
+            max-width: 500px;
             background-color: #333;
             color: #fff;
-            text-align: left; /* Changed: Align text to left for multi-line */
+            text-align: left;
             border-radius: 6px;
             padding: 5px 8px;
             position: absolute;
-            z-index: 100; /* Ensure tooltip is on top */
-            bottom: 125%; /* Position above the text */
+            z-index: 100;
+            bottom: 125%;
             left: 50%;
             transform: translateX(-50%);
             opacity: 0;
             transition: opacity 0.3s;
-            white-space: normal; /* Changed: Allow text wrapping */
-            word-wrap: break-word; /* Added: Ensure long words break */
+            white-space: normal;
+            word-wrap: break-word;
             font-size: 0.85rem;
-            pointer-events: none; /* Allow clicks to pass through tooltip when not hovered */
+            pointer-events: none;
         }
         .tooltip-container:hover .tooltip-text {
             visibility: visible;
@@ -166,7 +176,10 @@
     </div>
 
     <div id="appContent" class="container" style="display: none;">
-        <h1 class="text-4xl font-bold text-center text-gray-800 mb-8">Генератор вопросов SAT (Verbal Section)</h1>
+        <div class="flex items-center justify-between mb-4 flex-wrap">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2 sm:mb-0">Генератор вопросов SAT</h1>
+            <div id="userIdDisplay" class="text-sm text-gray-600">ID пользователя: <span class="font-mono text-gray-800 break-all"></span></div>
+        </div>
 
         <div class="mb-6">
             <label for="difficultySelect" class="block text-gray-700 text-sm font-bold mb-2">Выберите уровень сложности:</label>
@@ -176,42 +189,55 @@
             </select>
         </div>
 
-        <button id="generateBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-8">
-            Сгенерировать вопросы
-        </button>
-
+        <div class="flex flex-col sm:flex-row gap-4 mb-8">
+            <button id="generateBtn" class="w-full sm:w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
+                Сгенерировать вопросы
+            </button>
+            <button id="viewResultsBtn" class="w-full sm:w-1/2 bg-gray-400 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out cursor-not-allowed" disabled>
+                Посмотреть завершённые тесты
+            </button>
+        </div>
+        
         <div id="loadingIndicator" class="loading-indicator" style="display: none;">
-            <!-- Loading spinner and timer will be inserted here by JavaScript -->
         </div>
 
         <div id="questionsContainer" class="space-y-10">
-            <!-- Questions will be loaded here -->
+        </div>
+
+        <div id="resultsContainer" class="space-y-4" style="display:none;">
+            <h2 class="text-2xl font-bold text-gray-800 section-title mb-4">Завершённые тесты</h2>
+            <div id="resultsList" class="flex flex-col gap-2">
+                <!-- Completed test results will be loaded here -->
+            </div>
         </div>
 
         <div class="flex flex-col sm:flex-row justify-between gap-4 mt-4">
             <button id="nextBtn" class="w-full sm:w-1/2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75" style="display: none;">
                 Следующий вопрос
             </button>
-            <button id="endTestBtn" class="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75" style="display: none;">
+            <button id="saveAndExitBtn" class="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75" style="display: none;">
                 Сохранить и выйти
             </button>
         </div>
+        <div id="saveStatus" class="mt-4 text-center text-sm font-semibold text-gray-700" style="display: none;"></div>
     </div>
 
     <script type="module">
-        // Import the Google Generative AI library
         import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
 
-        // Initialize Firebase (required for Canvas environment, even if not directly used for auth in this example)
-        // This ensures __app_id and __firebase_config are handled correctly.
+        const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } = window.firebase;
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 
-        // Gemini API Key: Вставьте ваш реальный API-ключ Gemini здесь, заключив его в кавычки.
-        // Пример: const apiKey = "AIzaSyC_YourActualKeyGoesHere";
-        const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs"; // <--- Вставьте ваш API-ключ сюда, заменив пустые кавычки
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-        // Initialize Google Generative AI
+        let userId = null;
+        let isAuthReady = false;
+
+        const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
 
@@ -220,13 +246,17 @@
         const loginBtn = document.getElementById('loginBtn');
         const loginError = document.getElementById('loginError');
         const appContent = document.getElementById('appContent');
-
-        const questionsContainer = document.getElementById('questionsContainer');
+        const userIdDisplay = document.getElementById('userIdDisplay').querySelector('span');
         const generateBtn = document.getElementById('generateBtn');
+        const viewResultsBtn = document.getElementById('viewResultsBtn');
+        const questionsContainer = document.getElementById('questionsContainer');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsList = document.getElementById('resultsList');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const difficultySelect = document.getElementById('difficultySelect');
         const nextBtn = document.getElementById('nextBtn');
-        const endTestBtn = document.getElementById('endTestBtn');
+        const saveAndExitBtn = document.getElementById('saveAndExitBtn');
+        const saveStatus = document.getElementById('saveStatus');
 
         const categories = {
             "Information and Ideas": "information_ideas",
@@ -235,71 +265,447 @@
             "Standard English Conventions": "standard_english_conventions"
         };
 
-        // Global state to manage questions and current position
-        let allGeneratedQuestions = {}; // Stores questions by category (e.g., { 'information_ideas': [q1, q2, q3, q4] })
-        let categoriesArray = Object.keys(categories); // Array of category titles for ordered access
+        let allGeneratedQuestions = {};
+        let categoriesArray = Object.keys(categories);
         let currentCategoryIndex = 0;
         let currentQuestionIndex = 0;
 
-        // Hardcoded password for client-side authentication
         const CORRECT_PASSWORD = "Jaleel2010";
-
-        // Inactivity timer variables
         let inactivityTimer;
-        const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
-        // Countdown timer variable
+        const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
         let countdownIntervalId;
-        const COUNTDOWN_DURATION = 90; // Increased duration to be more realistic
+        const COUNTDOWN_DURATION = 90;
 
-        // Function to reset the inactivity timer
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                userIdDisplay.textContent = userId;
+                isAuthReady = true;
+                console.log("Authenticated with user ID:", userId);
+            } else {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined') {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                         await signInAnonymously(auth);
+                    }
+                } catch (error) {
+                    console.error("Error during anonymous sign-in:", error);
+                }
+            }
+        });
+
+        function updateViewResultsButtonState(disabled) {
+            viewResultsBtn.disabled = disabled;
+            if (disabled) {
+                viewResultsBtn.classList.add('bg-gray-400', 'cursor-not-allowed', 'hover:bg-gray-400', 'transform-none');
+                viewResultsBtn.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'transform', 'hover:scale-105');
+            } else {
+                viewResultsBtn.classList.remove('bg-gray-400', 'cursor-not-allowed', 'hover:bg-gray-400', 'transform-none');
+                viewResultsBtn.classList.add('bg-blue-600', 'hover:bg-blue-700', 'transform', 'hover:scale-105');
+            }
+        }
+
+        function showStatus(message, isError = false) {
+            saveStatus.textContent = message;
+            saveStatus.style.display = 'block';
+            saveStatus.className = `mt-4 text-center text-sm font-semibold ${isError ? 'text-red-600' : 'text-green-600'}`;
+            setTimeout(() => {
+                saveStatus.style.display = 'none';
+            }, 3000);
+        }
+        
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer);
             inactivityTimer = setTimeout(logoutUser, INACTIVITY_TIMEOUT);
         }
 
-        // Function to save the current session state
-        function saveSession() {
-            if (Object.keys(allGeneratedQuestions).length > 0) { // Only save if questions have been generated
+        async function saveSessionToFirestore() {
+            if (!isAuthReady || Object.keys(allGeneratedQuestions).length === 0) {
+                return;
+            }
+
+            try {
+                const sessionDocRef = doc(db, `artifacts/${appId}/public/data/sat_sessions`, userId);
                 const sessionData = {
+                    userId: userId,
                     categoryIndex: currentCategoryIndex,
                     questionIndex: currentQuestionIndex,
                     questions: allGeneratedQuestions,
-                    difficulty: difficultySelect.value
+                    difficulty: difficultySelect.value,
+                    timestamp: new Date().toISOString()
                 };
-                localStorage.setItem('satQuizSession', JSON.stringify(sessionData));
-                console.log('Session saved.');
+                
+                await setDoc(sessionDocRef, sessionData);
+                showStatus('Прогресс сохранён!');
+            } catch (error) {
+                console.error('Error saving session to Firestore:', error);
+                showStatus('Ошибка сохранения прогресса.', true);
             }
         }
 
-        // Function to load a saved session state
-        function loadSession() {
-            const savedSession = localStorage.getItem('satQuizSession');
-            if (savedSession) {
-                const sessionData = JSON.parse(savedSession);
-                // Using a custom modal dialog instead of alert/confirm
-                const confirmation = showCustomConfirm('Обнаружена незавершенная сессия. Хотите продолжить с того места, где остановились?');
+        async function checkForActiveSession() {
+            if (!isAuthReady) {
+                return false;
+            }
+            try {
+                const sessionDocRef = doc(db, `artifacts/${appId}/public/data/sat_sessions`, userId);
+                const docSnap = await getDoc(sessionDocRef);
+                return docSnap.exists() && Object.keys(docSnap.data()).length > 0;
+            } catch (error) {
+                console.error('Error checking for active session:', error);
+                return false;
+            }
+        }
+
+        async function loadSessionFromFirestore() {
+            if (!isAuthReady) {
+                return false;
+            }
+            try {
+                const sessionDocRef = doc(db, `artifacts/${appId}/public/data/sat_sessions`, userId);
+                const docSnap = await getDoc(sessionDocRef);
+
+                if (docSnap.exists() && Object.keys(docSnap.data()).length > 0) {
+                    const confirmation = showCustomConfirm('Обнаружена незавершенная сессия. Хотите продолжить с того места, где остановились?');
+                    
+                    const resume = await confirmation;
+                    if (resume) {
+                        const sessionData = docSnap.data();
+                        currentCategoryIndex = sessionData.categoryIndex;
+                        currentQuestionIndex = sessionData.questionIndex;
+                        allGeneratedQuestions = sessionData.questions;
+                        difficultySelect.value = sessionData.difficulty;
+                        console.log('Session loaded from Firestore. Resuming test.');
+                        return true;
+                    } else {
+                        await setDoc(sessionDocRef, {});
+                        console.log('Saved session discarded from Firestore.');
+                        return false;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading session from Firestore:', error);
+            }
+            return false;
+        }
+
+        async function saveCompletedTestToFirestore() {
+            if (!isAuthReady || Object.keys(allGeneratedQuestions).length === 0) {
+                return;
+            }
+
+            try {
+                const completedTestColRef = collection(db, `artifacts/${appId}/public/data/sat_completed_tests`);
+                const completedTestData = {
+                    userId: userId,
+                    questions: allGeneratedQuestions,
+                    difficulty: difficultySelect.value,
+                    timestamp: new Date().toISOString()
+                };
                 
-                return new Promise(resolve => {
-                    confirmation.then(resume => {
-                        if (resume) {
-                            currentCategoryIndex = sessionData.categoryIndex;
-                            currentQuestionIndex = sessionData.questionIndex;
-                            allGeneratedQuestions = sessionData.questions;
-                            difficultySelect.value = sessionData.difficulty; // Set difficulty to saved one
-                            console.log('Session loaded. Resuming test.');
-                            resolve(true); // Session resumed
-                        } else {
-                            localStorage.removeItem('satQuizSession'); // Clear if user doesn't want to resume
-                            console.log('Saved session discarded.');
-                            resolve(false); // Session not resumed
-                        }
+                await addDoc(completedTestColRef, completedTestData);
+                
+                const sessionDocRef = doc(db, `artifacts/${appId}/public/data/sat_sessions`, userId);
+                await setDoc(sessionDocRef, {});
+
+                showStatus('Тест сохранён в историю!');
+            } catch (error) {
+                console.error('Error saving completed test to Firestore:', error);
+                showStatus('Ошибка сохранения завершённого теста.', true);
+            }
+        }
+
+        async function loadCompletedTests() {
+            if (!isAuthReady) {
+                showStatus('Ошибка: Не авторизован.', true);
+                return;
+            }
+            
+            questionsContainer.style.display = 'none';
+            resultsContainer.style.display = 'block';
+            resultsList.innerHTML = '<p class="text-center text-gray-500">Загрузка...</p>';
+            generateBtn.style.display = 'none';
+            viewResultsBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+            saveAndExitBtn.style.display = 'none';
+
+            try {
+                const completedTestColRef = collection(db, `artifacts/${appId}/public/data/sat_completed_tests`);
+                const q = query(completedTestColRef, where("userId", "==", userId));
+                const querySnapshot = await getDocs(q);
+
+                const tests = [];
+                querySnapshot.forEach((doc) => {
+                    tests.push({ id: doc.id, ...doc.data() });
+                });
+
+                resultsList.innerHTML = '';
+                if (tests.length === 0) {
+                    resultsList.innerHTML = '<p class="text-center text-gray-500">Нет завершённых тестов.</p>';
+                } else {
+                    tests.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    tests.forEach(test => {
+                        const testCard = document.createElement('div');
+                        testCard.className = 'bg-white p-4 rounded-lg shadow-md cursor-pointer hover:bg-gray-100 transition duration-200';
+                        const date = new Date(test.timestamp).toLocaleString('ru-RU');
+                        const difficulty = test.difficulty === 'hard' ? 'Усложненный' : 'Облегченный';
+                        testCard.innerHTML = `<p class="font-semibold">Тест от ${date}</p><p class="text-sm text-gray-600">Сложность: ${difficulty}</p>`;
+                        testCard.addEventListener('click', () => {
+                            loadSpecificCompletedTest(test.id);
+                        });
+                        resultsList.appendChild(testCard);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading completed tests:', error);
+                resultsList.innerHTML = `<p class="text-center text-red-600">Ошибка при загрузке результатов.</p>`;
+            } finally {
+                generateBtn.style.display = 'block';
+                viewResultsBtn.style.display = 'block';
+                updateViewResultsButtonState(await checkForActiveSession());
+            }
+        }
+
+        async function loadSpecificCompletedTest(testId) {
+            if (!isAuthReady) return;
+            showLoading();
+            questionsContainer.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            generateBtn.style.display = 'none';
+            viewResultsBtn.style.display = 'none';
+            
+            try {
+                const docRef = doc(db, `artifacts/${appId}/public/data/sat_completed_tests`, testId);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const testData = docSnap.data();
+                    allGeneratedQuestions = testData.questions;
+                    questionsContainer.innerHTML = '';
+                    renderCompletedTestResults(allGeneratedQuestions, testData.difficulty, testData.timestamp);
+                } else {
+                    questionsContainer.innerHTML = `<p class="text-center text-red-600">Тест не найден.</p>`;
+                }
+            } catch (error) {
+                console.error('Error loading specific completed test:', error);
+                questionsContainer.innerHTML = `<p class="text-center text-red-600">Ошибка при загрузке теста.</p>`;
+            } finally {
+                hideLoading();
+                generateBtn.style.display = 'block';
+                viewResultsBtn.style.display = 'block';
+                updateViewResultsButtonState(await checkForActiveSession());
+            }
+        }
+
+        function renderCompletedTestResults(questions, difficulty, timestamp) {
+            questionsContainer.innerHTML = '';
+            const testDate = new Date(timestamp).toLocaleString('ru-RU');
+            const difficultyText = difficulty === 'hard' ? 'Усложненный' : 'Облегченный';
+            
+            let correctAnswers = 0;
+            let totalQuestions = 0;
+
+            const resultsHeader = document.createElement('div');
+            resultsHeader.className = 'mb-8 text-center';
+            resultsHeader.innerHTML = `
+                <h2 class="text-3xl font-bold text-gray-800">Результаты теста</h2>
+                <p class="text-lg text-gray-600 mt-2">Дата: ${testDate} | Сложность: ${difficultyText}</p>
+            `;
+            questionsContainer.appendChild(resultsHeader);
+
+            for (const categoryTitle of Object.keys(questions)) {
+                const categoryQuestions = questions[categoryTitle];
+                
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'category-section mb-10';
+                
+                const sectionTitle = document.createElement('h2');
+                sectionTitle.className = 'text-2xl font-semibold text-gray-700 mb-6 section-title';
+                sectionTitle.textContent = categoryTitle;
+                sectionDiv.appendChild(sectionTitle);
+
+                categoryQuestions.forEach((q, index) => {
+                    const questionCard = createQuestionCard(q, categoryTitle, `Вопрос ${index + 1}`);
+                    sectionDiv.appendChild(questionCard);
+                    totalQuestions++;
+                    if (q.user_answer === q.correct_answer) {
+                        correctAnswers++;
+                    }
+                });
+
+                questionsContainer.appendChild(sectionDiv);
+            }
+            
+            const scoreCard = document.createElement('div');
+            scoreCard.className = 'question-card text-center';
+            scoreCard.innerHTML = `<p class="text-xl font-bold">Ваш результат: ${correctAnswers} из ${totalQuestions}</p>`;
+            questionsContainer.insertBefore(scoreCard, resultsHeader.nextSibling);
+        }
+
+        function createQuestionCard(questionData, categoryTitle, questionNumberText, isInteractive = false) {
+            const questionCard = document.createElement('div');
+            questionCard.className = 'question-card';
+
+            let passageContent = questionData.passage;
+            if (questionData.vocabulary && Array.isArray(questionData.vocabulary)) {
+                questionData.vocabulary.forEach(vocabItem => {
+                    const escapedWord = vocabItem.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`\\b${escapedWord}\\b`, 'gi'); 
+                    passageContent = passageContent.replace(regex, (matchedWord) => {
+                        const formattedWordInTooltip = `<strong>${matchedWord.charAt(0).toUpperCase() + matchedWord.slice(1)}</strong>`;
+                        return `<span class="tooltip-container">${matchedWord}<span class="tooltip-text">${formattedWordInTooltip}: ${vocabItem.translation}: ${vocabItem.explanation}</span></span>`;
                     });
                 });
             }
-            return Promise.resolve(false); // No session found, resolve with false
+
+            if (categoryTitle === "Craft and Structure" && questionData.highlighted_word) {
+                const escapedHighlightedWord = questionData.highlighted_word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const highlightRegex = new RegExp(`\\b${escapedHighlightedWord}\\b`, 'gi');
+                passageContent = passageContent.replace(highlightRegex, `<span class="font-bold underline">${questionData.highlighted_word}</span>`);
+            } else if (categoryTitle === "Standard English Conventions") {
+                passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline text-red-600">$1</span>`);
+            }
+
+            const passageDiv = document.createElement('div');
+            passageDiv.className = 'question-passage';
+            passageDiv.innerHTML = passageContent;
+
+            const questionTextDiv = document.createElement('div');
+            questionTextDiv.className = 'question-text';
+            questionTextDiv.textContent = questionNumberText ? `${questionNumberText}: ${questionData.question}` : questionData.question;
+            
+            const optionsList = document.createElement('div');
+            optionsList.className = 'options-list';
+            
+            let optionsToDisplay = Array.isArray(questionData.options) ? questionData.options : [];
+            
+            optionsToDisplay.forEach(option => {
+                const optionItem = document.createElement('div');
+                optionItem.className = `option-item px-4 py-2 rounded-md transition duration-200 ease-in-out`;
+                optionItem.textContent = `${option.label}. ${option.text}`;
+                optionItem.dataset.label = option.label;
+
+                if (isInteractive) {
+                    optionItem.classList.add('cursor-pointer', 'hover:bg-gray-100');
+                    optionItem.addEventListener('click', function() {
+                        optionsList.querySelectorAll('.option-item').forEach(opt => {
+                            opt.classList.add('disabled');
+                            opt.style.pointerEvents = 'none';
+                        });
+
+                        const selectedLabel = this.dataset.label;
+                        const correctAnswerLabel = questionData.correct_answer;
+
+                        questionData.user_answer = selectedLabel;
+                        
+                        optionsList.querySelectorAll('.option-item').forEach(opt => {
+                            if (opt.dataset.label === correctAnswerLabel) {
+                                opt.classList.add('correct');
+                            } else if (opt.dataset.label === selectedLabel) {
+                                opt.classList.add('incorrect');
+                            }
+                        });
+
+                        explanationDiv.style.display = 'block';
+                        nextBtn.disabled = false;
+                        nextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        resetInactivityTimer();
+                    });
+                } else {
+                    optionItem.classList.add('disabled');
+                    if (option.label === questionData.correct_answer) {
+                        optionItem.classList.add('correct');
+                    } else if (option.label === questionData.user_answer) {
+                        optionItem.classList.add('incorrect');
+                    }
+                }
+                optionsList.appendChild(optionItem);
+            });
+            
+            const explanationDiv = document.createElement('div');
+            explanationDiv.className = 'explanation';
+            explanationDiv.textContent = `Объяснение: ${questionData.explanation}`;
+            
+            if (!isInteractive) {
+                 explanationDiv.style.display = 'block';
+            } else {
+                explanationDiv.style.display = 'none';
+            }
+
+            questionCard.appendChild(passageDiv);
+            questionCard.appendChild(questionTextDiv);
+            questionCard.appendChild(optionsList);
+            questionCard.appendChild(explanationDiv);
+
+            return questionCard;
         }
 
-        // Custom confirmation dialog (replaces alert/confirm)
+        function displayCurrentQuestion() {
+            const currentCategoryTitle = categoriesArray[currentCategoryIndex];
+            const currentCategoryKey = categories[currentCategoryTitle];
+            const questionsInCurrentCategory = allGeneratedQuestions[currentCategoryKey];
+
+            if (questionsInCurrentCategory && questionsInCurrentCategory.length > currentQuestionIndex) {
+                questionsContainer.innerHTML = '';
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'category-section mb-10';
+
+                const sectionTitle = document.createElement('h2');
+                sectionTitle.className = 'text-2xl font-semibold text-gray-700 mb-6 section-title';
+                sectionTitle.textContent = `${currentCategoryTitle} (Вопрос ${currentQuestionIndex + 1} из ${questionsInCurrentCategory.length})`;
+                sectionDiv.appendChild(sectionTitle);
+
+                const questionData = questionsInCurrentCategory[currentQuestionIndex];
+                const questionCard = createQuestionCard(questionData, currentCategoryTitle, null, true);
+                if (questionCard) {
+                    sectionDiv.appendChild(questionCard);
+                }
+                questionsContainer.appendChild(sectionDiv);
+
+                nextBtn.disabled = true;
+                nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                nextBtn.style.display = 'block';
+                saveAndExitBtn.style.display = 'block';
+
+                if (currentCategoryIndex === categoriesArray.length - 1 && currentQuestionIndex === questionsInCurrentCategory.length - 1) {
+                    nextBtn.textContent = 'Завершить тест';
+                } else {
+                    nextBtn.textContent = 'Следующий вопрос';
+                }
+
+            } else {
+                questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Тест завершен!</p>';
+                nextBtn.style.display = 'none';
+                saveAndExitBtn.style.display = 'none';
+                saveCompletedTestToFirestore();
+            }
+        }
+        
+        function customPrompt(message, onConfirm, onCancel = () => {}) {
+            const modalOverlay = document.createElement('div');
+            modalOverlay.className = 'fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50';
+            modalOverlay.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm mx-auto">
+                    <p class="text-lg font-semibold mb-4">${message}</p>
+                    <div class="flex justify-center space-x-4">
+                        <button id="confirmYes" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">Да</button>
+                        <button id="confirmNo" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">Нет</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modalOverlay);
+
+            document.getElementById('confirmYes').addEventListener('click', () => {
+                document.body.removeChild(modalOverlay);
+                onConfirm();
+            });
+            document.getElementById('confirmNo').addEventListener('click', () => {
+                document.body.removeChild(modalOverlay);
+                onCancel();
+            });
+        }
+
         function showCustomConfirm(message) {
             return new Promise(resolve => {
                 const modalOverlay = document.createElement('div');
@@ -326,84 +732,82 @@
             });
         }
 
-
-        // Function to log out the user and reset the app state
-        function logoutUser(saveCurrent = true) { // Added parameter to control saving
-            if (saveCurrent) {
-                saveSession(); // Save session before logging out
-            } else {
-                localStorage.removeItem('satQuizSession'); // Clear session if not saving
+        async function logoutUser() {
+            if (Object.keys(allGeneratedQuestions).length > 0) {
+                 await saveSessionToFirestore();
             }
-
-            // Hide app content and show login screen
+            
             appContent.style.display = 'none';
             loginScreen.style.display = 'block';
-            passwordInput.value = ''; // Clear password field
-            loginError.style.display = 'none'; // Hide any login error message
-
-            // Reset application state (only if not saving or after saving)
+            passwordInput.value = '';
+            loginError.style.display = 'none';
             allGeneratedQuestions = {};
             currentCategoryIndex = 0;
             currentQuestionIndex = 0;
-
-            // Hide all buttons that appear after login/generation
             nextBtn.style.display = 'none';
-            endTestBtn.style.display = 'none';
+            saveAndExitBtn.style.display = 'none';
             generateBtn.disabled = false;
             generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            questionsContainer.innerHTML = ''; // Clear questions display
-            hideLoading(); // Ensure loading indicator is hidden
-            clearTimeout(inactivityTimer); // Stop any existing inactivity timer
+            questionsContainer.innerHTML = '';
+            hideLoading();
+            clearTimeout(inactivityTimer);
+            updateViewResultsButtonState(false);
+            console.log('User logged out and session saved.');
         }
 
-        // Event listeners for user activity to reset the timer
         document.addEventListener('mousemove', resetInactivityTimer);
         document.addEventListener('keypress', resetInactivityTimer);
         document.addEventListener('click', resetInactivityTimer);
         document.addEventListener('scroll', resetInactivityTimer);
 
-        // Add a listener to save the session when the user closes the tab
-        window.addEventListener('beforeunload', saveSession);
-
-        // Initial check for activity when the page loads
-        resetInactivityTimer();
-
-        // Login function
-        loginBtn.addEventListener('click', async () => { // Made async to await loadSession
+        loginBtn.addEventListener('click', async () => {
             if (passwordInput.value === CORRECT_PASSWORD) {
+                if (!isAuthReady) {
+                    await new Promise(resolve => onAuthStateChanged(auth, () => resolve()));
+                }
+
                 loginScreen.style.display = 'none';
                 appContent.style.display = 'block';
                 loginError.style.display = 'none';
                 
-                const sessionResumed = await loadSession(); // Await the promise
-                if (sessionResumed) {
-                    displayCurrentQuestion(); // Display the resumed question
-                    // Ensure buttons are correctly displayed/enabled for resumed session
-                    nextBtn.style.display = 'block';
-                    endTestBtn.style.display = 'block';
-                    nextBtn.disabled = true; // Still disabled until answer is picked
-                    nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                const hasActive = await checkForActiveSession();
+                
+                // Проверяем, есть ли активная сессия и что делать дальше
+                if (hasActive) {
+                    const sessionResumed = await loadSessionFromFirestore();
+                    if (sessionResumed) {
+                        displayCurrentQuestion();
+                        updateViewResultsButtonState(true); // Кнопка отключена, т.к. сессия продолжается
+                    } else {
+                        // Если пользователь отказался продолжать, кнопка должна быть активна
+                        questionsContainer.style.display = 'block';
+                        resultsContainer.style.display = 'none';
+                        questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
+                        nextBtn.style.display = 'none';
+                        saveAndExitBtn.style.display = 'none';
+                        updateViewResultsButtonState(false); // Явно включаем кнопку
+                    }
                 } else {
-                    // If no session or user chose not to resume, start fresh
+                    // Если нет активной сессии, кнопка должна быть активна по умолчанию
+                    questionsContainer.style.display = 'block';
+                    resultsContainer.style.display = 'none';
                     questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
-                    generateBtn.style.display = 'block'; // Ensure generate button is visible
                     nextBtn.style.display = 'none';
-                    endTestBtn.style.display = 'none';
+                    saveAndExitBtn.style.display = 'none';
+                    updateViewResultsButtonState(false); // Явно включаем кнопку
                 }
-                resetInactivityTimer(); // Start timer after successful login
+                resetInactivityTimer();
             } else {
                 loginError.style.display = 'block';
             }
         });
 
-        // Allow pressing Enter key to login
         passwordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 loginBtn.click();
             }
         });
 
-        // Function to start a simulated countdown timer
         function startCountdown() {
             let timeLeft = COUNTDOWN_DURATION;
             const countdownEl = document.getElementById('countdownTimer');
@@ -414,14 +818,12 @@
                 if (timeLeft >= 0) {
                     countdownEl.textContent = `Приблизительное время: ${timeLeft} секунд`;
                 } else {
-                    // The timer runs out, but we don't stop the generation
                     countdownEl.textContent = 'Генерация занимает больше времени, чем обычно...';
                     clearInterval(countdownIntervalId);
                 }
             }, 1000);
         }
 
-        // Function to show loading indicator
         function showLoading() {
             loadingIndicator.innerHTML = `
                 <p>Генерация вопросов... это может занять несколько секунд.</p>
@@ -430,43 +832,41 @@
                 </div>
                 <p id="countdownTimer" class="mt-4 text-sm text-gray-500"></p>
             `;
-            loadingIndicator.style.display = 'block'; // Make loading indicator visible
+            loadingIndicator.style.display = 'block';
             generateBtn.disabled = true;
+            viewResultsBtn.disabled = true;
             generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            nextBtn.style.display = 'none'; // Hide next button during generation
-            endTestBtn.style.display = 'none'; // Hide end test button during generation
-            questionsContainer.innerHTML = ''; // Clear previous questions
-            clearTimeout(inactivityTimer); // Stop timer during generation
-            startCountdown(); // Start the countdown
+            updateViewResultsButtonState(true);
+            questionsContainer.innerHTML = '';
+            resultsContainer.style.display = 'none';
+            nextBtn.style.display = 'none';
+            saveAndExitBtn.style.display = 'none';
+            clearTimeout(inactivityTimer);
+            startCountdown();
         }
 
-        // Function to hide loading indicator
         function hideLoading() {
-            loadingIndicator.style.display = 'none'; // Hide loading indicator
-            loadingIndicator.innerHTML = ''; // Clear its content
+            loadingIndicator.style.display = 'none';
+            loadingIndicator.innerHTML = '';
             generateBtn.disabled = false;
             generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            // Clear the countdown interval
             if (countdownIntervalId) {
                 clearInterval(countdownIntervalId);
             }
         }
 
-        // Function to generate multiple questions for a given category with exponential backoff
         async function generateQuestionsForCategory(categoryName, categoryKey, difficulty, retries = 0) {
             const MAX_RETRIES = 5;
-            const BASE_DELAY_MS = 1000; // 1 second
+            const BASE_DELAY_MS = 1000;
 
             let prompt = "";
-            const numberOfQuestions = 4; // We want 4 questions per category
-
+            const numberOfQuestions = 4;
             const difficultyModifier = difficulty === 'hard' ? 'challenging' : 'straightforward';
             const wordCountRange = difficulty === 'hard' ? '60-80' : '40-60';
             const analyticalSkill = difficulty === 'hard' ? 'deep analytical skills' : 'basic comprehension';
             const grammaticalNuance = difficulty === 'hard' ? 'complex grammatical error' : 'common grammatical error';
             const rhetoricalEffect = difficulty === 'hard' ? 'advanced rhetorical effect' : 'clear and concise expression';
 
-            // Define the JSON schema for the expected output
             const responseSchema = {
                 type: "ARRAY",
                 items: {
@@ -487,24 +887,25 @@
                         },
                         correct_answer: { type: "STRING" },
                         explanation: { type: "STRING" },
-                        vocabulary: { // New vocabulary field
+                        vocabulary: {
                             type: "ARRAY",
                             items: {
                                 type: "OBJECT",
                                 properties: {
                                     word: { "type": "STRING" },
                                     translation: { "type": "STRING" },
-                                    explanation: { "type": "STRING" } // Added explanation for vocabulary
+                                    explanation: { "type": "STRING" }
                                 },
                                 required: ["word", "translation", "explanation"]
                             }
-                        }
+                        },
+                        highlighted_word: { type: "STRING" },
+                        user_answer: { type: "STRING" }
                     },
                     required: ["passage", "question", "options", "correct_answer", "explanation"]
                 }
             };
 
-            // Base prompt structure for generating multiple questions in a JSON array
             const basePrompt = (passageType, questionType, highlightInstruction = '') => `
                 Generate ${numberOfQuestions} highly unique and diverse SAT-style "${categoryName}" questions.
                 For each question, provide:
@@ -523,7 +924,7 @@
                     break;
                 case "craft_structure":
                     prompt = basePrompt('literary analysis, rhetorical strategy, stylistic choices, author\'s intent', 'Vocabulary in Context or Rhetorical Purpose', `
-                    For "Craft and Structure" questions, one ${difficulty === 'hard' ? 'nuanced word or phrase with subtle meanings or a complex rhetorical device' : 'common word or phrase with a clear meaning in context'} in the passage should be highlighted by enclosing it in double asterisks (e.g., **word**). Ensure variety in highlighted elements and passage themes.
+                    For "Craft and Structure" questions, one ${difficulty === 'hard' ? 'nuanced word or phrase with subtle meanings or a complex rhetorical device' : 'common word or phrase with a clear meaning in context'} in the passage should be highlighted by enclosing it in double asterisks (e.g., **word**). Also, provide the highlighted word in a new 'highlighted_word' field in the JSON response. Ensure variety in highlighted elements and passage themes.
                     `);
                     break;
                 case "expression_ideas":
@@ -537,7 +938,6 @@
             }
 
             try {
-                // Use generationConfig to enforce JSON schema
                 const result = await model.generateContent({
                     contents: [{ role: "user", parts: [{ text: prompt }] }],
                     generationConfig: {
@@ -546,211 +946,46 @@
                     }
                 });
                 
-                // The response should now be directly parsable JSON
                 const questionsArray = JSON.parse(result.response.text());
                 
-                // Ensure the response is indeed an array
                 if (!Array.isArray(questionsArray)) {
                     throw new Error("API did not return a JSON array of questions.");
                 }
-                return questionsArray; // Return the array of questions
+                return questionsArray;
             } catch (error) {
                 console.error(`Error generating questions for ${categoryName} (Difficulty: ${difficulty}):`, error);
                 
-                // Implement exponential backoff for retries
                 if (retries < MAX_RETRIES) {
-                    const delay = BASE_DELAY_MS * Math.pow(2, retries) + (Math.random() * 100); // Add jitter
+                    const delay = BASE_DELAY_MS * Math.pow(2, retries) + (Math.random() * 100);
                     console.warn(`Retrying ${categoryName} question generation in ${delay}ms (retry ${retries + 1}/${MAX_RETRIES})...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     return generateQuestionsForCategory(categoryName, categoryKey, difficulty, retries + 1);
                 }
 
-                let errorMessage = `<p class='text-red-600'>Произошла ошибка при генерации вопросов для категории "${categoryName}" (Уровень: ${difficulty === 'hard' ? 'Усложненный' : 'Облегченный'}). Пожалуйста, попробуйте еще раз.</p>`;
-
-                if (error.message) {
-                    if (error.message.includes("403") && error.message.includes("unregistered callers")) {
-                        errorMessage = "<p class='text-red-600'>Ошибка: Проблема с доступом к Gemini API (ошибка 403). Пожалуйста, убедитесь, что ваш API-ключ действителен и имеет необходимые разрешения для модели 'gemini-2.5-flash-preview-05-20' в Google Cloud Console.</p>";
-                    } else if (error.message.includes("API key not valid")) {
-                        errorMessage = "<p class='text-red-600'>Ошибка: API ключ Gemini недействителен. Пожалуйста, убедитесь, что он правильно настроен в вашей среде.</p>";
-                    } else if (error.message.includes("JSON")) {
-                         errorMessage = `<p class='text-red-600'>Ошибка парсинга JSON для категории "${categoryName}". Модель вернула некорректный формат. Пожалуйста, попробуйте еще раз.</p>`;
-                    }
+                let errorMessage = `<p class='text-red-600'>Произошла ошибка при генерации вопросов для категории "${categoryName}". Пожалуйста, попробуйте еще раз.</p>`;
+                if (error.message.includes("403")) {
+                    errorMessage = "<p class='text-red-600'>Ошибка: Проблема с доступом к Gemini API (ошибка 403). Пожалуйста, убедитесь, что ваш API-ключ действителен.</p>";
+                } else if (error.message.includes("JSON")) {
+                    errorMessage = `<p class='text-red-600'>Ошибка парсинга JSON для категории "${categoryName}".</p>`;
                 }
-                loadingIndicator.innerHTML = errorMessage; // Display error message in loading indicator area
-                hideLoading(); // Hide loading indicator (which now contains the error message)
-                return null; // Return null if all retries fail
+                loadingIndicator.innerHTML = errorMessage;
+                hideLoading();
+                return null;
             }
         }
-
-        // Function to display a single question
-        function displayQuestion(questionData, categoryTitle) {
-            if (!questionData) return;
-
-            const questionCard = document.createElement('div');
-            questionCard.className = 'question-card';
-
-            let passageContent = questionData.passage;
-
-            // First, add tooltips for vocabulary words
-            if (questionData.vocabulary && Array.isArray(questionData.vocabulary)) {
-                questionData.vocabulary.forEach(vocabItem => {
-                    // Use a regex with global and case-insensitive flags for whole word match
-                    // Escape special characters in the word for regex safety
-                    const escapedWord = vocabItem.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(`\\b${escapedWord}\\b`, 'gi'); 
-                    // Use a replacement function to preserve the original casing of the matched word
-                    passageContent = passageContent.replace(regex, (matchedWord) => {
-                        // Capitalize the first letter and make it bold for the tooltip display
-                        const formattedWordInTooltip = `<strong>${matchedWord.charAt(0).toUpperCase() + matchedWord.slice(1)}</strong>`;
-                        return `<span class="tooltip-container">${matchedWord}<span class="tooltip-text">${formattedWordInTooltip}: ${vocabItem.translation}: ${vocabItem.explanation}</span></span>`;
-                    });
-                });
-            }
-
-            // Then, apply highlighting for Craft and Structure / Standard English Conventions
-            if (questionData.highlighted_word && categoryTitle === "Craft and Structure") {
-                // Ensure the highlighted word is replaced correctly, even if it's inside a tooltip-container
-                const escapedHighlightedWord = questionData.highlighted_word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                const highlightRegex = new RegExp(`\\b${escapedHighlightedWord}\\b`, 'gi');
-                passageContent = passageContent.replace(highlightRegex, `<span class="font-bold underline">${questionData.highlighted_word}</span>`);
-            } else if (categoryTitle === "Standard English Conventions") {
-                // For Standard English Conventions, the error part is highlighted by **...**
-                passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline text-red-600">$1</span>`);
-            }
-
-            const passageDiv = document.createElement('div');
-            passageDiv.className = 'question-passage';
-            passageDiv.innerHTML = passageContent; // Use innerHTML to render bold/underline/tooltips
-
-            const questionTextDiv = document.createElement('div');
-            questionTextDiv.className = 'question-text';
-            questionTextDiv.textContent = questionData.question;
-
-            const optionsList = document.createElement('div');
-            optionsList.className = 'options-list';
-
-            // Ensure questionData.options is an array before iterating
-            let optionsToDisplay = questionData.options;
-            if (typeof optionsToDisplay === 'string') {
-                try {
-                    optionsToDisplay = JSON.parse(optionsToDisplay);
-                } catch (e) {
-                    console.warn("Could not parse options string:", optionsToDisplay, e);
-                    optionsToDisplay = []; // Fallback to empty array if parsing fails
-                }
-            }
-            if (!Array.isArray(optionsToDisplay)) {
-                console.warn("questionData.options is not an array after processing:", optionsToDisplay);
-                optionsToDisplay = []; // Ensure it's an array for forEach
-            }
-
-            const explanationDiv = document.createElement('div');
-            explanationDiv.className = 'explanation';
-            explanationDiv.textContent = `Объяснение: ${questionData.explanation}`;
-            explanationDiv.style.display = 'none'; // Initially hidden
-
-            optionsToDisplay.forEach(option => {
-                const optionItem = document.createElement('div');
-                optionItem.className = `option-item px-4 py-2 cursor-pointer rounded-md transition duration-200 ease-in-out hover:bg-gray-100`;
-                optionItem.textContent = `${option.label}. ${option.text}`;
-                optionItem.dataset.label = option.label; // Store option label
-                optionItem.dataset.correctAnswer = questionData.correct_answer; // Store correct answer
-
-                optionItem.addEventListener('click', function() {
-                    // Disable all options for this question after a choice is made
-                    optionsList.querySelectorAll('.option-item').forEach(opt => {
-                        opt.classList.add('disabled');
-                        opt.style.pointerEvents = 'none'; // Ensure it's truly unclickable
-                    });
-
-                    const selectedLabel = this.dataset.label;
-                    const correctAnswerLabel = this.dataset.correctAnswer;
-
-                    // Apply correct/incorrect styling and show explanation
-                    optionsList.querySelectorAll('.option-item').forEach(opt => {
-                        if (opt.dataset.label === correctAnswerLabel) {
-                            opt.classList.add('correct');
-                        } else if (opt.dataset.label === selectedLabel) { // This is the selected, but incorrect, option
-                            opt.classList.add('incorrect');
-                        }
-                    });
-
-                    // Show the explanation
-                    explanationDiv.style.display = 'block'; // Make sure explanation is visible
-
-                    // Enable next button after an answer is selected
-                    nextBtn.disabled = false;
-                    nextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    resetInactivityTimer(); // Reset timer on interaction
-                });
-                optionsList.appendChild(optionItem);
-            });
-
-            questionCard.appendChild(passageDiv);
-            questionCard.appendChild(questionTextDiv);
-            questionCard.appendChild(optionsList);
-            questionCard.appendChild(explanationDiv); // Append explanation after options
-
-            return questionCard;
-        }
-
-        // Function to display the current question based on global indices
-        function displayCurrentQuestion() {
-            const currentCategoryTitle = categoriesArray[currentCategoryIndex];
-            const currentCategoryKey = categories[currentCategoryTitle];
-            const questionsInCurrentCategory = allGeneratedQuestions[currentCategoryKey];
-
-            if (questionsInCurrentCategory && questionsInCurrentCategory.length > currentQuestionIndex) {
-                questionsContainer.innerHTML = ''; // Clear previous question
-                const sectionDiv = document.createElement('div');
-                sectionDiv.className = 'category-section mb-10';
-
-                const sectionTitle = document.createElement('h2');
-                sectionTitle.className = 'text-2xl font-semibold text-gray-700 mb-6 section-title';
-                sectionTitle.textContent = `${currentCategoryTitle} (Вопрос ${currentQuestionIndex + 1} из ${questionsInCurrentCategory.length})`;
-                sectionDiv.appendChild(sectionTitle);
-
-                const questionData = questionsInCurrentCategory[currentQuestionIndex];
-                const questionCard = displayQuestion(questionData, currentCategoryTitle);
-                if (questionCard) {
-                    sectionDiv.appendChild(questionCard);
-                }
-                questionsContainer.appendChild(sectionDiv);
-
-                // Disable next button until an answer is selected
-                nextBtn.disabled = true;
-                nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                nextBtn.style.display = 'block'; // Ensure next button is visible
-
-                // Update next button text and hide "Сохранить и выйти" button on the last question
-                if (currentCategoryIndex === categoriesArray.length - 1 && currentQuestionIndex === questionsInCurrentCategory.length - 1) {
-                    nextBtn.textContent = 'Завершить тест';
-                    endTestBtn.style.display = 'none'; // Hide "Сохранить и выйти" on the very last question
-                } else {
-                    nextBtn.textContent = 'Следующий вопрос';
-                    endTestBtn.style.display = 'block'; // Show "Сохранить и выйти" on other questions
-                }
-
-            } else {
-                // This case should ideally not be hit if logic is correct, but as a fallback
-                console.warn("No more questions to display in current category or category not found.");
-                nextBtn.style.display = 'none';
-                endTestBtn.style.display = 'none'; // Hide end test button
-                questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Тест завершен!</p>';
-            }
-        }
-
-        // Main function to generate all questions and start the quiz
+        
         async function generateAllQuestions() {
-            showLoading(); // Show loading indicator at the start
+            showLoading();
             
-            // Clear any existing session when starting a new test
-            localStorage.removeItem('satQuizSession'); 
+            if (isAuthReady) {
+                await setDoc(doc(db, `artifacts/${appId}/public/data/sat_sessions`, userId), {});
+            }
+            updateViewResultsButtonState(true);
 
-            allGeneratedQuestions = {}; // Reset for new generation
+            allGeneratedQuestions = {};
             currentCategoryIndex = 0;
             currentQuestionIndex = 0;
-            categoriesArray = Object.keys(categories); // Update categories array
+            categoriesArray = Object.keys(categories);
 
             let allSuccessful = true;
             for (const categoryTitle of categoriesArray) {
@@ -764,25 +999,24 @@
                     allSuccessful = false;
                     const errorCard = document.createElement('div');
                     errorCard.className = 'question-card bg-red-100 text-red-800';
-                    errorCard.textContent = `Не удалось сгенерировать вопросы для категории "${categoryTitle}". Пожалуйста, попробуйте еще раз.`;
+                    errorCard.textContent = `Не удалось сгенерировать вопросы для категории "${categoryTitle}".`;
                     questionsContainer.appendChild(errorCard);
                 }
             }
-            hideLoading(); // Hide loading indicator after all generations are complete
+            hideLoading();
+            questionsContainer.style.display = 'block';
+            resultsContainer.style.display = 'none';
 
             if (allSuccessful && categoriesArray.length > 0 && allGeneratedQuestions[categories[categoriesArray[0]]]) {
-                nextBtn.style.display = 'block'; // Show next button
-                endTestBtn.style.display = 'block'; // Show end test button (will be hidden on last question by displayCurrentQuestion)
-                displayCurrentQuestion(); // Display the first question
-                resetInactivityTimer(); // Reset timer after generation
+                displayCurrentQuestion();
+                resetInactivityTimer();
             } else {
-                nextBtn.style.display = 'none'; // Hide next button if generation failed
-                endTestBtn.style.display = 'none'; // Hide end test button if generation failed
+                nextBtn.style.display = 'none';
+                saveAndExitBtn.style.display = 'none';
             }
         }
 
-        // Function to handle navigation to the next question
-        function handleNextQuestion() {
+        async function handleNextQuestion() {
             const currentCategoryKey = categories[categoriesArray[currentCategoryIndex]];
             const questionsInCurrentCategory = allGeneratedQuestions[currentCategoryKey];
 
@@ -793,30 +1027,28 @@
             }
 
             if (currentCategoryIndex >= categoriesArray.length) {
-                // All questions and categories are exhausted
                 questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Тест завершен! Нажмите "Сгенерировать вопросы", чтобы начать заново.</p>';
                 nextBtn.style.display = 'none';
-                endTestBtn.style.display = 'none'; // Hide end test button
-                generateBtn.disabled = false; // Re-enable main generate button
+                saveAndExitBtn.style.display = 'none';
+                generateBtn.disabled = false;
                 generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                clearTimeout(inactivityTimer); // Stop timer when test is finished
-                localStorage.removeItem('satQuizSession'); // Clear session when test is fully completed
+                clearTimeout(inactivityTimer);
+                await saveCompletedTestToFirestore();
+                updateViewResultsButtonState(false);
             } else {
                 displayCurrentQuestion();
-                resetInactivityTimer(); // Reset timer on next question
+                resetInactivityTimer();
             }
         }
 
-        // Function to handle ending the test (now "Сохранить и выйти")
-        function handleEndTest() {
-            logoutUser(); // Call logoutUser without 'false' to save the session by default
-            questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Тест завершен. Вы можете сгенерировать новые вопросы.</p>';
+        async function handleSaveAndExit() {
+            await logoutUser();
         }
-
-        // Attach event listeners
+        
         generateBtn.addEventListener('click', generateAllQuestions);
         nextBtn.addEventListener('click', handleNextQuestion);
-        endTestBtn.addEventListener('click', handleEndTest);
+        saveAndExitBtn.addEventListener('click', handleSaveAndExit);
+        viewResultsBtn.addEventListener('click', loadCompletedTests);
     </script>
 </body>
 </html>
