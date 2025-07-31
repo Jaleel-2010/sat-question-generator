@@ -122,6 +122,7 @@
         .tooltip-text {
             visibility: hidden;
             width: auto; /* Adjust width based on content */
+            min-width: 180px; /* Changed: Added min-width for better spacing */
             max-width: 500px; /* Changed: Increased max-width for more words */
             background-color: #333;
             color: #fff;
@@ -180,10 +181,7 @@
         </button>
 
         <div id="loadingIndicator" class="loading-indicator" style="display: none;">
-            <p>Генерация вопросов... это может занять несколько секунд.</p>
-            <div class="mt-4">
-                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto"></div>
-            </div>
+            <!-- Questions will be loaded here -->
         </div>
 
         <div id="questionsContainer" class="space-y-10">
@@ -249,6 +247,9 @@
         // Inactivity timer variables
         let inactivityTimer;
         const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+        // Countdown timer variable
+        let countdownIntervalId;
+        const COUNTDOWN_DURATION = 90; // Increased duration to be more realistic
 
         // Function to reset the inactivity timer
         function resetInactivityTimer() {
@@ -351,11 +352,8 @@
             generateBtn.disabled = false;
             generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             questionsContainer.innerHTML = ''; // Clear questions display
-            loadingIndicator.style.display = 'none'; // Ensure loading indicator is hidden
-            loadingIndicator.innerHTML = ''; // Clear loading message
-
-            // Stop any existing inactivity timer
-            clearTimeout(inactivityTimer);
+            hideLoading(); // Ensure loading indicator is hidden
+            clearTimeout(inactivityTimer); // Stop any existing inactivity timer
         }
 
         // Event listeners for user activity to reset the timer
@@ -402,6 +400,24 @@
             }
         });
 
+        // Function to start a simulated countdown timer
+        function startCountdown() {
+            let timeLeft = COUNTDOWN_DURATION;
+            const countdownEl = document.getElementById('countdownTimer');
+            countdownEl.textContent = `Приблизительное время: ${timeLeft} секунд`;
+
+            countdownIntervalId = setInterval(() => {
+                timeLeft--;
+                if (timeLeft >= 0) {
+                    countdownEl.textContent = `Приблизительное время: ${timeLeft} секунд`;
+                } else {
+                    // The timer runs out, but we don't stop the generation
+                    countdownEl.textContent = 'Генерация занимает больше времени, чем обычно...';
+                    clearInterval(countdownIntervalId);
+                }
+            }, 1000);
+        }
+
         // Function to show loading indicator
         function showLoading() {
             loadingIndicator.innerHTML = `
@@ -409,6 +425,7 @@
                 <div class="mt-4">
                     <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto"></div>
                 </div>
+                <p id="countdownTimer" class="mt-4 text-sm text-gray-500"></p>
             `;
             loadingIndicator.style.display = 'block'; // Make loading indicator visible
             generateBtn.disabled = true;
@@ -417,6 +434,7 @@
             endTestBtn.style.display = 'none'; // Hide end test button during generation
             questionsContainer.innerHTML = ''; // Clear previous questions
             clearTimeout(inactivityTimer); // Stop timer during generation
+            startCountdown(); // Start the countdown
         }
 
         // Function to hide loading indicator
@@ -425,6 +443,10 @@
             loadingIndicator.innerHTML = ''; // Clear its content
             generateBtn.disabled = false;
             generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            // Clear the countdown interval
+            if (countdownIntervalId) {
+                clearInterval(countdownIntervalId);
+            }
         }
 
         // Function to generate multiple questions for a given category with exponential backoff
@@ -433,7 +455,6 @@
             const BASE_DELAY_MS = 1000; // 1 second
 
             let prompt = "";
-            let topic = "general knowledge"; // Default topic, can be varied
             const numberOfQuestions = 4; // We want 4 questions per category
 
             const difficultyModifier = difficulty === 'hard' ? 'challenging' : 'straightforward';
@@ -482,14 +503,14 @@
 
             // Base prompt structure for generating multiple questions in a JSON array
             const basePrompt = (passageType, questionType, highlightInstruction = '') => `
-                Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryName}" questions.
+                Generate ${numberOfQuestions} highly unique and diverse SAT-style "${categoryName}" questions.
                 For each question, provide:
-                1. A short, ${difficultyModifier} academic-style passage (${wordCountRange} words) on a distinct topic (e.g., ${passageType}). Ensure variety in topics and phrasing.
-                2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer. Avoid direct repetition of concepts or exact wording from previous questions.
+                1. A short, ${difficultyModifier} academic-style passage (${wordCountRange} words) on a distinct topic (e.g., ${passageType}). Ensure maximal variation in topics, themes, and specific phrasing across all generated passages and questions. Avoid any direct repetition of concepts, exact wording, or similar narrative structures from previously generated content within the same batch.
+                2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer.
                 3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
                 4. The correct answer label (e.g., "A").
                 5. A brief explanation (1-2 sentences) in Russian for the correct answer.
-                6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form (preserving its original casing from the passage), its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                6. Identify ${difficulty === 'hard' ? '6-7' : '4-5'} English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form (preserving its original casing from the passage), its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                 ${highlightInstruction}
             `;
 
