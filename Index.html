@@ -229,35 +229,31 @@
     </div>
 
     <script type="module">
-        // Import all necessary Firebase and Gemini modules in a single block for better management
+        // Импортируем все необходимые модули Firebase и Gemini в одном блоке
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
-
-        // ==========================================================================================================
-        //  The code has been updated to use a more robust initialization flow within a single module script.
-        //  This should resolve any potential timing or loading issues that may have prevented the 'Start' button
-        //  from working. Added console logs for better debugging.
-        // ==========================================================================================================
         
-        // Canvas environment variables are provided automatically
+        // ==========================================================================================================
+        //  Ключевое изменение: теперь приложение инициализируется и аутентифицирует пользователя сразу,
+        //  как только загружается скрипт. Это гарантирует, что все сервисы готовы,
+        //  прежде чем пользователь сможет взаимодействовать с UI.
+        // ==========================================================================================================
+
         const firebaseConfig = JSON.parse(__firebase_config);
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         
-        // Gemini API key is also provided automatically
         const apiKey = "";
-        
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        let app, auth, db; // Declare variables for global access
+        let app, auth, db;
         let userId = null;
         let isAuthReady = false;
         
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
 
-        // Get DOM elements
         const startScreen = document.getElementById('startScreen');
         const startBtn = document.getElementById('startBtn');
         const appContent = document.getElementById('appContent');
@@ -290,7 +286,7 @@
         let countdownIntervalId;
         const COUNTDOWN_DURATION = 90;
 
-        // Function to display a simple modal for errors or confirmations
+        // Displays a simple modal message to the user
         function showModal(message, isError = false) {
             const modalOverlay = document.createElement('div');
             modalOverlay.className = 'modal-overlay';
@@ -307,6 +303,7 @@
             console.error(message);
         }
 
+        // Toggles the state and style of the "View Results" button
         function updateViewResultsButtonState(disabled) {
             viewResultsBtn.disabled = disabled;
             if (disabled) {
@@ -318,6 +315,7 @@
             }
         }
 
+        // Displays a temporary status message to the user
         function showStatus(message, isError = false) {
             saveStatus.textContent = message;
             saveStatus.style.display = 'block';
@@ -327,11 +325,13 @@
             }, 3000);
         }
         
+        // Resets the user inactivity timer to prevent auto-logout
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer);
             inactivityTimer = setTimeout(logoutUser, INACTIVITY_TIMEOUT);
         }
 
+        // Saves the current test session to Firestore
         async function saveSessionToFirestore() {
             if (!isAuthReady || Object.keys(allGeneratedQuestions).length === 0) {
                 return;
@@ -356,6 +356,7 @@
             }
         }
 
+        // Checks if an active session exists for the current user
         async function checkForActiveSession() {
             if (!isAuthReady) {
                 return false;
@@ -370,6 +371,7 @@
             }
         }
 
+        // Loads a saved session from Firestore
         async function loadSessionFromFirestore() {
             if (!isAuthReady) {
                 return false;
@@ -402,6 +404,7 @@
             return false;
         }
 
+        // Saves a completed test to Firestore
         async function saveCompletedTestToFirestore() {
             if (!isAuthReady || Object.keys(allGeneratedQuestions).length === 0) {
                 return;
@@ -428,6 +431,7 @@
             }
         }
 
+        // Loads a list of completed tests from Firestore
         async function loadCompletedTests() {
             if (!isAuthReady) {
                 showStatus('Ошибка: Не авторизован.', true);
@@ -479,6 +483,7 @@
             }
         }
 
+        // Loads and displays a specific completed test
         async function loadSpecificCompletedTest(testId) {
             if (!isAuthReady) return;
             showLoading();
@@ -510,6 +515,7 @@
             }
         }
 
+        // Renders the results of a completed test
         function renderCompletedTestResults(questions, difficulty, timestamp) {
             questionsContainer.innerHTML = '';
             const testDate = new Date(timestamp).toLocaleString('ru-RU');
@@ -555,6 +561,7 @@
             questionsContainer.insertBefore(scoreCard, resultsHeader.nextSibling);
         }
 
+        // Creates a single question card element for display
         function createQuestionCard(questionData, categoryTitle, questionNumberText, isInteractive = false) {
             const questionCard = document.createElement('div');
             questionCard.className = 'question-card';
@@ -653,6 +660,7 @@
             return questionCard;
         }
 
+        // Displays the current question on the screen
         function displayCurrentQuestion() {
             const currentCategoryTitle = categoriesArray[currentCategoryIndex];
             const currentCategoryKey = categories[currentCategoryTitle];
@@ -694,30 +702,7 @@
             }
         }
         
-        function customPrompt(message, onConfirm, onCancel = () => {}) {
-            const modalOverlay = document.createElement('div');
-            modalOverlay.className = 'fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50';
-            modalOverlay.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm mx-auto">
-                    <p class="text-lg font-semibold mb-4">${message}</p>
-                    <div class="flex justify-center space-x-4">
-                        <button id="confirmYes" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">Да</button>
-                        <button id="confirmNo" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">Нет</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modalOverlay);
-
-            document.getElementById('confirmYes').addEventListener('click', () => {
-                document.body.removeChild(modalOverlay);
-                onConfirm();
-            });
-            document.getElementById('confirmNo').addEventListener('click', () => {
-                document.body.removeChild(modalOverlay);
-                onCancel();
-            });
-        }
-
+        // Displays a custom confirmation dialog
         function showCustomConfirm(message) {
             return new Promise(resolve => {
                 const modalOverlay = document.createElement('div');
@@ -744,6 +729,7 @@
             });
         }
 
+        // Logs the user out and saves the session if needed
         async function logoutUser() {
             if (Object.keys(allGeneratedQuestions).length > 0) {
                  await saveSessionToFirestore();
@@ -765,87 +751,92 @@
             console.log('User logged out and session saved.');
         }
 
+        // Attaches event listeners for inactivity tracking
         document.addEventListener('mousemove', resetInactivityTimer);
         document.addEventListener('keypress', resetInactivityTimer);
         document.addEventListener('click', resetInactivityTimer);
         document.addEventListener('scroll', resetInactivityTimer);
 
-        async function initializeAppContent() {
-            console.log("Кнопка 'Начать' нажата! Инициализация приложения...");
-            
+        // Initializes Firebase and user authentication
+        async function initializeFirebaseAndAuth() {
             try {
-                // Initialize Firebase services
+                console.log("Начало инициализации приложения.");
                 app = initializeApp(firebaseConfig);
                 auth = getAuth(app);
                 db = getFirestore(app);
 
-                // Sign in with the provided token or anonymously
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
                 }
-                console.log("Попытка входа в систему Firebase...");
 
-                // Wait for the auth state to be confirmed
                 await new Promise(resolve => onAuthStateChanged(auth, user => {
                     if (user) {
                         userId = user.uid;
                         userIdDisplay.textContent = userId;
                         isAuthReady = true;
                         console.log("Аутентификация успешна. ID пользователя:", userId);
+                    } else {
+                        console.log("Аутентификация не удалась или пользователь вышел.");
                     }
                     resolve();
                 }));
-
-                console.log("Инициализация Firebase и вход в систему успешно завершены.");
-
-                startScreen.style.display = 'none';
-                appContent.style.display = 'block';
                 
-                const hasActive = await checkForActiveSession();
-                
-                // Check if an active session exists
-                if (hasActive) {
-                    const sessionResumed = await loadSessionFromFirestore();
-                    if (sessionResumed) {
-                        displayCurrentQuestion();
-                        updateViewResultsButtonState(true); // Button is disabled because a session is in progress
-                    } else {
-                        // If the user declined to resume, the button should be active
-                        questionsContainer.style.display = 'block';
-                        resultsContainer.style.display = 'none';
-                        questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
-                        nextBtn.style.display = 'none';
-                        saveAndExitBtn.style.display = 'none';
-                        updateViewResultsButtonState(false); // Explicitly enable the button
-                    }
-                } else {
-                    // If no active session exists, the button should be active by default
-                    questionsContainer.style.display = 'block';
-                    resultsContainer.style.display = 'none';
-                    questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
-                    nextBtn.style.display = 'none';
-                    saveAndExitBtn.style.display = 'none';
-                    updateViewResultsButtonState(false); // Explicitly enable the button
-                }
-                resetInactivityTimer();
+                await setupUI();
+
             } catch (error) {
                 console.error("Критическая ошибка при запуске приложения:", error);
                 showModal("Критическая ошибка при запуске приложения. Проверьте консоль для получения подробной информации.");
             }
         }
-
-        // Attach event listeners after the DOM is fully loaded to ensure elements exist
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log("DOM полностью загружен. Установка обработчиков событий.");
-            startBtn.addEventListener('click', initializeAppContent);
+        
+        // Sets up the initial UI based on whether an active session exists
+        async function setupUI() {
+            if (!isAuthReady) return;
+            const hasActive = await checkForActiveSession();
+            
+            if (hasActive) {
+                const sessionResumed = await loadSessionFromFirestore();
+                if (sessionResumed) {
+                    startScreen.style.display = 'none';
+                    appContent.style.display = 'block';
+                    displayCurrentQuestion();
+                    updateViewResultsButtonState(true);
+                } else {
+                    startScreen.style.display = 'none';
+                    appContent.style.display = 'block';
+                    updateViewResultsButtonState(false);
+                }
+            } else {
+                startScreen.style.display = 'none';
+                appContent.style.display = 'block';
+                questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
+                updateViewResultsButtonState(false);
+            }
+            // Add event listeners only after the app content is displayed
             generateBtn.addEventListener('click', generateAllQuestions);
             nextBtn.addEventListener('click', handleNextQuestion);
             saveAndExitBtn.addEventListener('click', handleSaveAndExit);
             viewResultsBtn.addEventListener('click', loadCompletedTests);
-        });
+            resetInactivityTimer();
+        }
 
+        // Handles the click event for the "Start" button
+        async function handleStartClick() {
+             console.log("Кнопка 'Начать' была нажата.");
+             startScreen.style.display = 'none';
+             appContent.style.display = 'block';
+        }
+
+        // Attaches the "Start" button listener immediately
+        startBtn.addEventListener('click', handleStartClick);
+
+        // This function is the main entry point to start the app logic.
+        // It is called immediately to set everything up.
+        initializeFirebaseAndAuth();
+
+        // Starts a loading countdown timer
         function startCountdown() {
             let timeLeft = COUNTDOWN_DURATION;
             const countdownEl = document.getElementById('countdownTimer');
@@ -862,6 +853,7 @@
             }, 1000);
         }
 
+        // Shows the loading indicator
         function showLoading() {
             loadingIndicator.innerHTML = `
                 <p>Генерация вопросов... это может занять несколько секунд.</p>
@@ -883,6 +875,7 @@
             startCountdown();
         }
 
+        // Hides the loading indicator
         function hideLoading() {
             loadingIndicator.style.display = 'none';
             loadingIndicator.innerHTML = '';
@@ -893,6 +886,7 @@
             }
         }
 
+        // Generates questions for a specific category using the Gemini API
         async function generateQuestionsForCategory(categoryName, categoryKey, difficulty, retries = 0) {
             const MAX_RETRIES = 5;
             const BASE_DELAY_MS = 1000;
@@ -1012,6 +1006,7 @@
             }
         }
         
+        // Generates all questions for all categories
         async function generateAllQuestions() {
             showLoading();
             
@@ -1054,6 +1049,7 @@
             }
         }
 
+        // Handles the "Next Question" or "Finish Test" button click
         async function handleNextQuestion() {
             const currentCategoryKey = categories[categoriesArray[currentCategoryIndex]];
             const questionsInCurrentCategory = allGeneratedQuestions[currentCategoryKey];
@@ -1079,6 +1075,7 @@
             }
         }
 
+        // Handles the "Save and Exit" button click
         async function handleSaveAndExit() {
             await logoutUser();
         }
