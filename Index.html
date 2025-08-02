@@ -281,7 +281,6 @@
         let currentCategoryIndex = 0;
         let currentQuestionIndex = 0;
         let inactivityTimer;
-        let timerId; // Variable to hold the timer interval ID
         
         // Hardcoded password for client-side authentication
         const CORRECT_PASSWORD = "Jaleel2010";
@@ -333,7 +332,6 @@
             
             // Stop any timers
             clearTimeout(inactivityTimer);
-            clearInterval(timerId);
         }
 
         // Function to reset the inactivity timer
@@ -479,8 +477,6 @@
             
             // Stop any existing inactivity timer
             clearTimeout(inactivityTimer);
-            // Clear the generation countdown timer
-            clearInterval(timerId);
             
             // Update button state on logout
             updateControlButtonsState(false);
@@ -536,31 +532,16 @@
             }
         });
 
-        // Function to show loading indicator with a countdown timer
-        function showLoading() {
+        // Function to show loading indicator with a message
+        function showLoading(message) {
             questionsContainer.innerHTML = ''; // Clear previous questions
-            
-            // Display loading message and countdown timer
             loadingIndicator.innerHTML = `
-                <p>Генерация вопросов... это может занять несколько секунд.</p>
-                <p id="countdownTimer" class="mt-2 text-sm text-gray-600">Осталось времени: 90 с</p>
+                <p class="text-xl font-semibold mb-4">${message}</p>
                 <div class="mt-4">
                     <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto"></div>
                 </div>
             `;
             loadingIndicator.style.display = 'block'; // Make loading indicator visible
-            
-            // Start the countdown timer
-            let timeLeft = 90;
-            const timerElement = document.getElementById('countdownTimer');
-            timerId = setInterval(() => {
-                timeLeft--;
-                if (timeLeft >= 0) {
-                    timerElement.textContent = `Осталось времени: ${timeLeft} с`;
-                } else {
-                    clearInterval(timerId);
-                }
-            }, 1000);
 
             generateBtn.disabled = true;
             generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -576,7 +557,6 @@
             loadingIndicator.innerHTML = ''; // Clear its content
             generateBtn.disabled = false;
             generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            clearInterval(timerId); // Stop the countdown timer
         }
 
         // Function to generate multiple questions for a given category with exponential backoff
@@ -955,36 +935,32 @@
 
         // --- Core app flow logic ---
         generateBtn.addEventListener('click', async () => {
-            // **NEW: Reset the entire app state before generating new questions**
+            // Reset the entire app state before generating new questions
             resetAppState();
-            showLoading();
             
             const difficulty = difficultySelect.value;
-            const promises = categoriesArray.map(categoryTitle => {
-                const categoryKey = categories[categoryTitle];
-                return generateQuestionsForCategory(categoryTitle, categoryKey, difficulty);
-            });
+            const newQuestions = {};
 
             try {
-                const results = await Promise.all(promises);
-
-                // Check if any generation failed
-                if (results.some(result => !result)) {
-                    // An error message has already been displayed by generateQuestionsForCategory, just exit.
-                    return;
+                // Generate questions for each category sequentially
+                for (const categoryTitle of categoriesArray) {
+                    const categoryKey = categories[categoryTitle];
+                    showLoading(`Генерация вопросов для категории: ${categoryTitle}...`);
+                    const questions = await generateQuestionsForCategory(categoryTitle, categoryKey, difficulty);
+                    
+                    // If generation fails for a category, an error message is already shown.
+                    if (!questions) {
+                        return; // Stop the process
+                    }
+                    newQuestions[categoryKey] = questions;
                 }
 
-                // Map results back to the category keys
-                categoriesArray.forEach((categoryTitle, index) => {
-                    const categoryKey = categories[categoryTitle];
-                    allGeneratedQuestions[categoryKey] = results[index];
-                });
-
+                allGeneratedQuestions = newQuestions;
                 hideLoading();
                 displayCurrentQuestion();
                 updateControlButtonsState(true); // Disable buttons as a session is now active
             } catch (error) {
-                console.error("Critical error during batch generation:", error);
+                console.error("Critical error during sequential generation:", error);
                 loadingIndicator.innerHTML = '<p class="text-red-600">Произошла критическая ошибка при генерации всех вопросов. Пожалуйста, попробуйте еще раз.</p>';
                 hideLoading();
             }
