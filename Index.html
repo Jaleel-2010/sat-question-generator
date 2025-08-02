@@ -279,13 +279,12 @@
         function loadSession() {
             const savedSession = localStorage.getItem('satQuizSession');
             if (savedSession) {
-                const sessionData = JSON.parse(savedSession);
-                // Using a custom modal dialog instead of alert/confirm
                 const confirmation = showCustomConfirm('Обнаружена незавершенная сессия. Хотите продолжить с того места, где остановились?');
                 
                 return new Promise(resolve => {
                     confirmation.then(resume => {
                         if (resume) {
+                            const sessionData = JSON.parse(savedSession);
                             currentCategoryIndex = sessionData.categoryIndex;
                             currentQuestionIndex = sessionData.questionIndex;
                             allGeneratedQuestions = sessionData.questions;
@@ -818,7 +817,7 @@
         // Function to handle quiz completion
         function endQuiz() {
             // Сохраняем завершенный тест в локальное хранилище
-            const completedTests = JSON.as(localStorage.getItem('satCompletedTests') || '[]');
+            const completedTests = JSON.parse(localStorage.getItem('satCompletedTests') || '[]');
             const newCompletedTest = {
                 timestamp: new Date().toISOString(),
                 difficulty: difficultySelect.value,
@@ -828,25 +827,20 @@
             localStorage.setItem('satCompletedTests', JSON.stringify(completedTests));
             console.log('Completed test saved locally.');
 
-            questionsContainer.innerHTML = `
-                <div class="text-center text-gray-600 text-lg">
-                    <p class="text-3xl font-bold text-gray-800 mb-4">Тест завершен!</p>
-                    <p class="mb-4">Ваши результаты сохранены в локальном хранилище браузера.</p>
-                    <p>Нажмите **"Сгенерировать вопросы"**, чтобы начать новый тест.</p>
-                </div>
-            `;
+            // Возвращаемся на главный экран приложения
+            questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Тест завершен. Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
             
-            // --- НОВОЕ: Сброс состояния для возможности генерации нового теста ---
+            // Сбрасываем состояние для возможности генерации нового теста
             nextBtn.style.display = 'none';
             saveAndExitBtn.style.display = 'none';
             generateBtn.style.display = 'block'; // Убеждаемся, что кнопка генерации видна
             generateBtn.disabled = false; // Re-enable main generate button
             generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            nextBtn.textContent = 'Следующий вопрос'; // Сбрасываем текст кнопки на случай, если он был "Завершить тест"
             clearTimeout(inactivityTimer); // Stop timer when test is finished
             localStorage.removeItem('satQuizSession'); // Clear session when test is fully completed
             completedQuestions = []; // Очищаем массив после сохранения
             allGeneratedQuestions = {}; // Очищаем сгенерированные вопросы, чтобы гарантировать новый тест
-            // --- КОНЕЦ НОВОГО БЛОКА ---
         }
 
         // Function to handle saving and exiting the test
