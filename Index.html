@@ -563,16 +563,24 @@
         async function generateQuestionsForCategory(categoryName, categoryKey, difficulty, retries = 0) {
             const MAX_RETRIES = 5;
             const BASE_DELAY_MS = 1000; // 1 second
-
-            let prompt = "";
-            let topic = "general knowledge"; // Default topic, can be varied
             const numberOfQuestions = 4; // We want 4 questions per category
 
-            const difficultyModifier = difficulty === 'hard' ? 'challenging' : 'straightforward';
-            const wordCountRange = difficulty === 'hard' ? '60-80' : '40-60';
-            const analyticalSkill = difficulty === 'hard' ? 'deep analytical skills' : 'basic comprehension';
-            const grammaticalNuance = difficulty === 'hard' ? 'complex grammatical error' : 'common grammatical error';
-            const rhetoricalEffect = difficulty === 'hard' ? 'advanced rhetorical effect' : 'clear and concise expression';
+            const prompt = `
+                Generate a JSON array containing exactly ${numberOfQuestions} unique and diverse SAT-style questions for the "${categoryName}" category. The difficulty should be suitable for a ${difficulty === 'hard' ? 'harder module' : 'easier module'}.
+                
+                For each question object, provide the following properties:
+                1.  "passage": A short, academic-style passage in English.
+                2.  "question": A multiple-choice question in English based on the passage.
+                3.  "options": An array of four option objects (A, B, C, D), each with a "label" (A, B, C, D) and a "text" (the option text in English).
+                4.  "correct_answer": The label of the correct option (e.g., "A").
+                5.  "explanation": A brief explanation in Russian for why the answer is correct.
+                6.  "vocabulary": An array of objects for 4-5 key words from the passage. Each object should have a "word", its Russian "translation", and a Russian "explanation".
+
+                For "Craft and Structure" questions, one word or phrase in the passage should be enclosed in double asterisks, like **word**.
+                For "Standard English Conventions" questions, the grammatically incorrect part should be enclosed in double asterisks, like **incorrect part**.
+
+                Provide only the JSON array as the response, without any additional conversational text, explanations, or markdown fences.
+            `;
 
             // Define the JSON schema for the expected output
             const responseSchema = {
@@ -595,14 +603,14 @@
                         },
                         correct_answer: { type: "STRING" },
                         explanation: { type: "STRING" },
-                        vocabulary: { // New vocabulary field
+                        vocabulary: {
                             type: "ARRAY",
                             items: {
                                 type: "OBJECT",
                                 properties: {
                                     word: { "type": "STRING" },
                                     translation: { "type": "STRING" },
-                                    explanation: { "type": "STRING" } // Added explanation for vocabulary
+                                    explanation: { "type": "STRING" }
                                 },
                                 required: ["word", "translation", "explanation"]
                             }
@@ -612,37 +620,6 @@
                 }
             };
 
-            // Base prompt structure for generating multiple questions in a JSON array
-            const basePrompt = (passageType, questionType, highlightInstruction = '') => `
-                Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryName}" questions.
-                For each question, provide:
-                1. A short, ${difficultyModifier} academic-style passage (${wordCountRange} words) on a distinct topic (e.g., ${passageType}). Ensure variety in topics and phrasing.
-                2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer. Avoid direct repetition of concepts or exact wording from previous questions.
-                3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
-                4. The correct answer label (e.g., "A").
-                5. A brief explanation (1-2 sentences) in Russian for the correct answer.
-                6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form (preserving its original casing from the passage), its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
-                ${highlightInstruction}
-            `;
-
-            switch (categoryKey) {
-                case "information_ideas":
-                    prompt = basePrompt('advanced science, philosophy, nuanced history, art criticism, economic theory', 'Information and Ideas (e.g., main idea, detail, or inference)');
-                    break;
-                case "craft_structure":
-                    prompt = basePrompt('literary analysis, rhetorical strategy, stylistic choices, author\'s intent', 'Vocabulary in Context or Rhetorical Purpose', `
-                    For "Craft and Structure" questions, one ${difficulty === 'hard' ? 'nuanced word or phrase with subtle meanings or a complex rhetorical device' : 'common word or phrase with a clear meaning in context'} in the passage should be highlighted by enclosing it in double asterisks (e.g., **word**). Ensure variety in highlighted elements and passage themes.
-                    `);
-                    break;
-                case "expression_ideas":
-                    prompt = basePrompt('research methodology, policy analysis, argumentation, essay structure', 'Expression of Ideas (e.g., best revision, addition, or transition to improve ${rhetoricalEffect})');
-                    break;
-                case "standard_english_conventions":
-                    prompt = basePrompt('scientific principles, historical analysis, grammar rules, syntax', 'Standard English Conventions (asking to correct a ${grammaticalNuance})', `
-                    For "Standard English Conventions" questions, the part with the grammatical error in the passage should be highlighted by enclosing it in double asterisks. Ensure variety in grammatical errors and passage themes.
-                    `);
-                    break;
-            }
 
             try {
                 // Use generationConfig to enforce JSON schema
@@ -654,12 +631,17 @@
                     }
                 });
                 
-                // The response should now be directly parsable JSON
-                const questionsArray = JSON.parse(result.response.text());
+                const rawResponse = result?.response?.text();
+                if (!rawResponse) {
+                    throw new Error("API returned an empty or malformed response.");
+                }
+
+                const questionsArray = JSON.parse(rawResponse);
                 
                 // Ensure the response is indeed an array
-                if (!Array.isArray(questionsArray)) {
-                    throw new Error("API did not return a JSON array of questions.");
+                if (!Array.isArray(questionsArray) || questionsArray.length !== numberOfQuestions) {
+                    console.error("API returned an unexpected number of questions or non-array format:", rawResponse);
+                    throw new Error("API returned a JSON array with an incorrect number of questions.");
                 }
                 return questionsArray; // Return the array of questions
             } catch (error) {
@@ -680,7 +662,7 @@
                         errorMessage = "<p class='text-red-600'>Ошибка: Проблема с доступом к Gemini API (ошибка 403). Пожалуйста, убедитесь, что ваш API-ключ действителен и имеет необходимые разрешения для модели 'gemini-2.5-flash-preview-05-20' в Google Cloud Console.</p>";
                     } else if (error.message.includes("API key not valid")) {
                         errorMessage = "<p class='text-red-600'>Ошибка: API ключ Gemini недействителен. Пожалуйста, убедитесь, что он правильно настроен в вашей среде.</p>";
-                    } else if (error.message.includes("JSON")) {
+                    } else if (error.message.includes("JSON") || error.message.includes("malformed")) {
                             errorMessage = `<p class='text-red-600'>Ошибка парсинга JSON для категории "${categoryName}". Модель вернула некорректный формат. Пожалуйста, попробуйте еще раз.</p>`;
                     }
                 }
@@ -940,12 +922,13 @@
             
             const difficulty = difficultySelect.value;
             const newQuestions = {};
+            const numCategories = categoriesArray.length;
 
             try {
                 // Generate questions for each category sequentially
-                for (const categoryTitle of categoriesArray) {
+                for (const [index, categoryTitle] of categoriesArray.entries()) {
                     const categoryKey = categories[categoryTitle];
-                    showLoading(`Генерация вопросов для категории: ${categoryTitle}...`);
+                    showLoading(`Генерация вопросов для категории: ${categoryTitle} (${index + 1} из ${numCategories})...`);
                     const questions = await generateQuestionsForCategory(categoryTitle, categoryKey, difficulty);
                     
                     // If generation fails for a category, an error message is already shown.
