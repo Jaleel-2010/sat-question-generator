@@ -208,7 +208,7 @@
 
         // Gemini API Key: Вставьте ваш реальный API-ключ Gemini здесь, заключив его в кавычки.
         // Пример: const apiKey = "AIzaSyC_YourActualKeyGoesHere";
-        const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs"; // <--- Вставьте ваш API-ключ сюда, заменив пустые кавычки
+        const apiKey = ""; // <--- Вставьте ваш API-ключ сюда, заменив пустые кавычки
 
         // Initialize Google Generative AI
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -236,6 +236,7 @@
 
         // Global state to manage questions and current position
         let allGeneratedQuestions = {}; // Stores questions by category (e.g., { 'information_ideas': [q1, q2, q3, q4] })
+        let completedQuestions = []; // **НОВОЕ**: Массив для хранения всех вопросов с ответами пользователя
         let categoriesArray = Object.keys(categories); // Array of category titles for ordered access
         let currentCategoryIndex = 0;
         let currentQuestionIndex = 0;
@@ -265,7 +266,8 @@
                     categoryIndex: currentCategoryIndex,
                     questionIndex: currentQuestionIndex,
                     questions: allGeneratedQuestions,
-                    difficulty: difficultySelect.value
+                    difficulty: difficultySelect.value,
+                    completedQuestions: completedQuestions // Сохраняем уже отвеченные вопросы
                 };
                 localStorage.setItem('satQuizSession', JSON.stringify(sessionData));
                 console.log('Session saved.');
@@ -287,6 +289,7 @@
                             currentQuestionIndex = sessionData.questionIndex;
                             allGeneratedQuestions = sessionData.questions;
                             difficultySelect.value = sessionData.difficulty; // Set difficulty to saved one
+                            completedQuestions = sessionData.completedQuestions || []; // Загружаем отвеченные вопросы
                             console.log('Session loaded. Resuming test.');
                             resolve(true); // Session resumed
                         } else {
@@ -344,6 +347,7 @@
 
             // Reset application state (only if not saving or after saving)
             allGeneratedQuestions = {};
+            completedQuestions = []; // Reset completed questions
             currentCategoryIndex = 0;
             currentQuestionIndex = 0;
 
@@ -667,6 +671,13 @@
                     const selectedLabel = this.dataset.label;
                     const correctAnswerLabel = this.dataset.correctAnswer;
 
+                    // **НОВОЕ**: Записываем ответ пользователя в массив completedQuestions
+                    const questionWithAnswer = {
+                        ...questionData,
+                        user_answer: selectedLabel
+                    };
+                    completedQuestions.push(questionWithAnswer);
+                    
                     // Apply correct/incorrect styling and show explanation
                     optionsList.querySelectorAll('.option-item').forEach(opt => {
                         if (opt.dataset.label === correctAnswerLabel) {
@@ -747,6 +758,7 @@
             
             // Clear any existing session when starting a new test
             localStorage.removeItem('satQuizSession'); 
+            completedQuestions = []; // **НОВОЕ**: Очищаем массив с ответами при начале нового теста
 
             allGeneratedQuestions = {}; // Reset for new generation
             currentCategoryIndex = 0;
@@ -804,9 +816,21 @@
         
         // Function to handle quiz completion
         function endQuiz() {
+            // **НОВОЕ**: Сохраняем завершенный тест в локальное хранилище
+            const completedTests = JSON.parse(localStorage.getItem('satCompletedTests') || '[]');
+            const newCompletedTest = {
+                timestamp: new Date().toISOString(),
+                difficulty: difficultySelect.value,
+                questions: completedQuestions
+            };
+            completedTests.push(newCompletedTest);
+            localStorage.setItem('satCompletedTests', JSON.stringify(completedTests));
+            console.log('Completed test saved locally.');
+
             questionsContainer.innerHTML = `
                 <div class="text-center text-gray-600 text-lg">
                     <p class="text-3xl font-bold text-gray-800 mb-4">Тест завершен!</p>
+                    <p class="mb-4">Ваши результаты сохранены в локальном хранилище браузера.</p>
                     <p>Нажмите "Сгенерировать вопросы", чтобы начать заново.</p>
                 </div>
             `;
@@ -816,6 +840,7 @@
             generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             clearTimeout(inactivityTimer); // Stop timer when test is finished
             localStorage.removeItem('satQuizSession'); // Clear session when test is fully completed
+            completedQuestions = []; // **НОВОЕ**: Очищаем массив после сохранения
         }
 
         // Function to handle saving and exiting the test
