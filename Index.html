@@ -593,32 +593,32 @@
                         passage: { type: "STRING" },
                         question: { type: "STRING" },
                         options: {
-                            type: "ARRAY",
-                            items: {
-                                type: "OBJECT",
-                                properties: {
-                                    label: { type: "STRING" },
-                                    text: { type: "STRING" }
+                            "type": "ARRAY",
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "label": { "type": "STRING" },
+                                    "text": { "type": "STRING" }
                                 },
-                                required: ["label", "text"]
+                                "required": ["label", "text"]
                             }
                         },
-                        correct_answer: { type: "STRING" },
-                        explanation: { type: "STRING" },
-                        vocabulary: {
-                            type: "ARRAY",
-                            items: {
-                                type: "OBJECT",
-                                properties: {
-                                    word: { "type": "STRING" },
-                                    translation: { "type": "STRING" },
-                                    explanation: { "type": "STRING" }
+                        "correct_answer": { "type": "STRING" },
+                        "explanation": { "type": "STRING" },
+                        "vocabulary": {
+                            "type": "ARRAY",
+                            "items": {
+                                "type": "OBJECT",
+                                "properties": {
+                                    "word": { "type": "STRING" },
+                                    "translation": { "type": "STRING" },
+                                    "explanation": { "type": "STRING" }
                                 },
-                                required: ["word", "translation", "explanation"]
+                                "required": ["word", "translation", "explanation"]
                             }
                         }
                     },
-                    required: ["passage", "question", "options", "correct_answer", "explanation"]
+                    "required": ["passage", "question", "options", "correct_answer", "explanation"]
                 }
             };
 
