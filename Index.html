@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Генератор вопросов SAT</title>
     <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -237,7 +237,7 @@
 
     <script type="module">
         // Import the Google Generative AI library
-        import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
+        import { GoogleGenerativeAI } from '[https://esm.sh/@google/generative-ai](https://esm.sh/@google/generative-ai)';
 
         // Initialize Firebase (required for Canvas environment, even if not directly used for auth in this example)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -636,11 +636,20 @@
                     throw new Error("API returned an empty or malformed response.");
                 }
 
-                const questionsArray = JSON.parse(rawResponse);
+                // **NEW: Clean the response to ensure it's valid JSON.**
+                // This regex will find any string starting with '[' and ending with ']',
+                // which should be the JSON array itself, and ignore any surrounding text.
+                const jsonMatch = rawResponse.match(/\[.*?\]/s);
+                if (!jsonMatch) {
+                    throw new Error("Could not find a valid JSON array in the API response.");
+                }
+
+                const cleanedResponse = jsonMatch[0];
+                const questionsArray = JSON.parse(cleanedResponse);
                 
                 // Ensure the response is indeed an array
                 if (!Array.isArray(questionsArray) || questionsArray.length !== numberOfQuestions) {
-                    console.error("API returned an unexpected number of questions or non-array format:", rawResponse);
+                    console.error("API returned an unexpected number of questions or non-array format:", cleanedResponse);
                     throw new Error("API returned a JSON array with an incorrect number of questions.");
                 }
                 return questionsArray; // Return the array of questions
@@ -662,8 +671,8 @@
                         errorMessage = "<p class='text-red-600'>Ошибка: Проблема с доступом к Gemini API (ошибка 403). Пожалуйста, убедитесь, что ваш API-ключ действителен и имеет необходимые разрешения для модели 'gemini-2.5-flash-preview-05-20' в Google Cloud Console.</p>";
                     } else if (error.message.includes("API key not valid")) {
                         errorMessage = "<p class='text-red-600'>Ошибка: API ключ Gemini недействителен. Пожалуйста, убедитесь, что он правильно настроен в вашей среде.</p>";
-                    } else if (error.message.includes("JSON") || error.message.includes("malformed")) {
-                            errorMessage = `<p class='text-red-600'>Ошибка парсинга JSON для категории "${categoryName}". Модель вернула некорректный формат. Пожалуйста, попробуйте еще раз.</p>`;
+                    } else if (error.message.includes("JSON") || error.message.includes("malformed") || error.message.includes("Could not find a valid JSON")) {
+                        errorMessage = `<p class='text-red-600'>Ошибка парсинга JSON для категории "${categoryName}". Модель вернула некорректный формат. Пожалуйста, попробуйте еще раз.</p>`;
                     }
                 }
                 loadingIndicator.innerHTML = errorMessage; // Display error message in loading indicator area
