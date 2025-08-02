@@ -249,6 +249,10 @@
             <button id="backToTestsBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg mb-4 transition duration-200 ease-in-out">
                 &larr; Назад к списку тестов
             </button>
+            <!-- New delete button added here -->
+            <button id="deleteTestBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg mb-4 ml-4 transition duration-200 ease-in-out">
+                Удалить тест
+            </button>
             <div id="testReviewContainer">
                 <!-- Detailed test review will be displayed here -->
             </div>
@@ -292,6 +296,7 @@
         const difficultySelect = document.getElementById('difficultySelect');
         const nextBtn = document.getElementById('nextBtn');
         const saveAndExitBtn = document.getElementById('saveAndExitBtn');
+        const deleteTestBtn = document.getElementById('deleteTestBtn'); // New delete button
 
         const categories = {
             "Information and Ideas": "information_ideas",
@@ -299,6 +304,7 @@
             "Expression of Ideas": "expression_ideas",
             "Standard English Conventions": "standard_english_conventions"
         };
+        const romanNumerals = ['I', 'II', 'III', 'IV'];
 
         // Global state to manage questions and current position
         let allGeneratedQuestions = {}; // Stores questions by category (e.g., { 'information_ideas': [q1, q2, q3, q4] })
@@ -307,6 +313,7 @@
         let currentCategoryIndex = 0;
         let currentQuestionIndex = 0;
         let isSessionActive = false; // New state variable to track active session
+        let currentReviewingTest = null; // New state variable to store the test currently being reviewed
 
         // Hardcoded password for client-side authentication
         const CORRECT_PASSWORD = "Jaleel2010";
@@ -433,6 +440,7 @@
             completedQuestions = []; // Reset completed questions
             currentCategoryIndex = 0;
             currentQuestionIndex = 0;
+            currentReviewingTest = null;
 
             // Hide all buttons that appear after login/generation
             nextBtn.style.display = 'none';
@@ -826,7 +834,9 @@
 
                 const sectionTitle = document.createElement('h2');
                 sectionTitle.className = 'text-2xl font-semibold text-gray-700 mb-6 section-title';
-                sectionTitle.textContent = `${currentCategoryTitle} (Вопрос ${currentQuestionIndex + 1} из ${questionsInCurrentCategory.length})`;
+                // Add Roman numeral to the category title
+                const romanNumeral = romanNumerals[currentCategoryIndex] || '';
+                sectionTitle.textContent = `${romanNumeral}. ${currentCategoryTitle} (Вопрос ${currentQuestionIndex + 1} из ${questionsInCurrentCategory.length})`;
                 sectionDiv.appendChild(sectionTitle);
 
                 const questionData = questionsInCurrentCategory[currentQuestionIndex];
@@ -991,6 +1001,9 @@
         }
 
         function displayCompletedTestDetails(testData) {
+            // Store the currently viewed test data for the delete button
+            currentReviewingTest = testData;
+
             testsListContainer.style.display = 'none';
             completedTestDetailsContainer.style.display = 'block';
             testReviewContainer.innerHTML = ''; // Clear previous review
@@ -1012,10 +1025,13 @@
             });
 
             let questionCounter = 0;
-            for (const categoryTitle of Object.keys(categoriesMap)) {
+            // Iterate over categories and display questions with Roman numerals
+            Object.keys(categoriesMap).forEach((categoryTitle, categoryIndex) => {
                 const sectionTitle = document.createElement('h3');
                 sectionTitle.className = 'text-2xl font-semibold text-gray-700 mt-8 mb-4';
-                sectionTitle.textContent = categoryTitle;
+                // Add Roman numeral to the category title
+                const romanNumeral = romanNumerals[categoryIndex] || '';
+                sectionTitle.textContent = `${romanNumeral}. ${categoryTitle}`;
                 testReviewContainer.appendChild(sectionTitle);
 
                 categoriesMap[categoryTitle].forEach(question => {
@@ -1045,7 +1061,7 @@
                     testReviewContainer.appendChild(questionCard);
                     testReviewContainer.appendChild(userAndCorrectAnswerDiv);
                 });
-            }
+            });
         }
         
         // Function to go back to the main app screen from completed tests
@@ -1053,6 +1069,26 @@
             completedTestsScreen.style.display = 'none';
             appContent.style.display = 'block';
             updateCompletedTestsBtnState(); // Ensure button state is correct on return
+        }
+
+        // Function to delete the currently reviewed test
+        function deleteCurrentTest() {
+            if (!currentReviewingTest) {
+                console.error("No test selected for deletion.");
+                return;
+            }
+
+            // Show a custom confirmation dialog before deleting
+            showCustomConfirm('Вы уверены, что хотите удалить этот тест? Это действие необратимо.').then(wantsToDelete => {
+                if (wantsToDelete) {
+                    let completedTests = JSON.parse(localStorage.getItem('satCompletedTests') || '[]');
+                    const filteredTests = completedTests.filter(test => test.timestamp !== currentReviewingTest.timestamp);
+                    localStorage.setItem('satCompletedTests', JSON.stringify(filteredTests));
+                    console.log('Test deleted successfully.');
+                    // Go back to the list of completed tests after deletion
+                    showCompletedTests();
+                }
+            });
         }
 
 
@@ -1074,8 +1110,10 @@
         backToTestsBtn.addEventListener('click', () => {
             testsListContainer.style.display = 'block';
             completedTestDetailsContainer.style.display = 'none';
+            currentReviewingTest = null; // Clear the reviewing test when going back
         });
         backToMainBtn.addEventListener('click', backToMainScreen); // New event listener
+        deleteTestBtn.addEventListener('click', deleteCurrentTest); // New event listener for the delete button
 
         // Initial check for a saved session and update the button state
         const savedSession = localStorage.getItem('satQuizSession');
