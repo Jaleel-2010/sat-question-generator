@@ -238,6 +238,9 @@
     </div>
 
     <div id="completedTestsScreen" class="completed-tests-screen" style="display: none;">
+        <button id="backToMainBtn" class="bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg mb-4 transition duration-200 ease-in-out">
+            &larr; Назад в главное окно
+        </button>
         <h1 class="text-4xl font-bold text-center text-gray-800 mb-8">Завершенные тесты</h1>
         <div id="testsListContainer" class="space-y-4">
             <!-- Completed tests will be listed here -->
@@ -284,6 +287,7 @@
         const completedTestDetailsContainer = document.getElementById('completedTestDetailsContainer');
         const testReviewContainer = document.getElementById('testReviewContainer');
         const backToTestsBtn = document.getElementById('backToTestsBtn');
+        const backToMainBtn = document.getElementById('backToMainBtn'); // New button
         const loadingIndicator = document.getElementById('loadingIndicator');
         const difficultySelect = document.getElementById('difficultySelect');
         const nextBtn = document.getElementById('nextBtn');
@@ -1043,6 +1047,13 @@
                 });
             }
         }
+        
+        // Function to go back to the main app screen from completed tests
+        function backToMainScreen() {
+            completedTestsScreen.style.display = 'none';
+            appContent.style.display = 'block';
+            updateCompletedTestsBtnState(); // Ensure button state is correct on return
+        }
 
 
         // Attach event listeners
@@ -1064,6 +1075,7 @@
             testsListContainer.style.display = 'block';
             completedTestDetailsContainer.style.display = 'none';
         });
+        backToMainBtn.addEventListener('click', backToMainScreen); // New event listener
 
         // Initial check for a saved session and update the button state
         const savedSession = localStorage.getItem('satQuizSession');
