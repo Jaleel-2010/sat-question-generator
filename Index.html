@@ -9,68 +9,66 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Светло-голубовато-серый фон */
+            background-color: #f0f4f8; /* Light blue-gray background */
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
+            min-height: 100vh; /* Ensure body takes full viewport height */
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
-            width: 100%;
+            width: 100%; /* Ensure container takes full width on smaller screens */
         }
         .section-title {
-            border-bottom: 2px solid #cbd5e1;
+            border-bottom: 2px solid #cbd5e1; /* Light gray border */
             padding-bottom: 0.5rem;
             margin-bottom: 1.5rem;
         }
         .question-card {
             background-color: #ffffff;
-            border-radius: 0.75rem;
+            border-radius: 0.75rem; /* Rounded corners */
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #e2e8f0; /* Light border */
         }
         .question-passage {
             font-style: italic;
-            color: #4a5568;
+            color: #4a5568; /* Dark gray text */
             margin-bottom: 1rem;
             line-height: 1.6;
         }
         .question-text {
             font-weight: 600;
             margin-bottom: 0.75rem;
-            color: #2d3748;
+            color: #2d3748; /* Darker gray text */
         }
         .option-item {
             margin-bottom: 0.5rem;
-            padding: 0.75rem;
+            padding: 0.5rem 0;
             border-radius: 0.5rem;
-            cursor: pointer;
+            cursor: pointer; /* Indicate clickable */
             transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
-            border: 1px solid transparent;
-            font-size: 1rem;
+            border: 1px solid transparent; /* Default transparent border */
         }
         .option-item:hover:not(.disabled) {
-            background-color: #f3f4f6;
+            background-color: #f3f4f6; /* Light gray on hover */
         }
         .option-item.correct {
-            background-color: #d1fae5;
-            border-color: #34d399;
+            background-color: #d1fae5; /* Light green for correct answer */
+            border-color: #34d399; /* Green border */
             font-weight: 500;
         }
         .option-item.incorrect {
-            background-color: #fee2e2;
-            border-color: #ef4444;
+            background-color: #fee2e2; /* Light red for incorrect answer */
+            border-color: #ef4444; /* Red border */
             font-weight: 500;
         }
         .option-item.disabled {
-            pointer-events: none;
-            opacity: 0.8;
-            cursor: default;
+            pointer-events: none; /* Disable clicks */
+            opacity: 0.8; /* Slightly dim disabled options */
         }
         .explanation {
             margin-top: 1rem;
@@ -78,6 +76,7 @@
             border-top: 1px dashed #e2e8f0;
             font-size: 0.9rem;
             color: #4a5568;
+            display: none; /* Hidden by default */
         }
         .login-container {
             background-color: #ffffff;
@@ -98,7 +97,7 @@
         }
         .login-button {
             width: 100%;
-            background-color: #4299e1;
+            background-color: #4299e1; /* Blue */
             color: white;
             font-weight: bold;
             padding: 0.75rem;
@@ -106,39 +105,40 @@
             transition: background-color 0.2s ease-in-out;
         }
         .login-button:hover {
-            background-color: #3182ce;
+            background-color: #3182ce; /* Darker blue */
         }
         .error-message {
             color: #ef4444;
             margin-top: 1rem;
             font-size: 0.9rem;
         }
+        /* Tooltip styles */
         .tooltip-container {
             position: relative;
             display: inline-block;
             cursor: help;
-            border-bottom: 1px dotted #94a3b8;
+            border-bottom: 1px dotted #94a3b8; /* Dotted underline for tooltip words */
         }
         .tooltip-text {
             visibility: hidden;
-            width: auto;
-            max-width: 500px;
+            width: auto; /* Adjust width based on content */
+            max-width: 500px; /* Changed: Increased max-width for more words */
             background-color: #333;
             color: #fff;
-            text-align: left;
+            text-align: left; /* Changed: Align text to left for multi-line */
             border-radius: 6px;
             padding: 5px 8px;
             position: absolute;
-            z-index: 100;
-            bottom: 125%;
+            z-index: 100; /* Ensure tooltip is on top */
+            bottom: 125%; /* Position above the text */
             left: 50%;
             transform: translateX(-50%);
             opacity: 0;
             transition: opacity 0.3s;
-            white-space: normal;
-            word-wrap: break-word;
+            white-space: normal; /* Changed: Allow text wrapping */
+            word-wrap: break-word; /* Added: Ensure long words break */
             font-size: 0.85rem;
-            pointer-events: none;
+            pointer-events: none; /* Allow clicks to pass through tooltip when not hovered */
         }
         .tooltip-container:hover .tooltip-text {
             visibility: visible;
@@ -167,46 +167,50 @@
     <div id="appContent" class="container" style="display: none;">
         <h1 class="text-4xl font-bold text-center text-gray-800 mb-8">Генератор вопросов SAT (Verbal Section)</h1>
 
-        <div id="mainControls" class="flex flex-col sm:flex-row gap-4 mb-6">
-            <div class="flex-grow">
-                <label for="difficultySelect" class="block text-gray-700 text-sm font-bold mb-2">Выберите уровень сложности:</label>
-                <select id="difficultySelect" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500">
-                    <option value="easy" selected>Облегченный уровень (Easier Module)</option>
-                    <option value="hard">Усложненный уровень (Harder Module 2)</option>
-                </select>
-            </div>
-            <div class="flex-grow flex flex-col justify-end gap-2">
-                <button id="generateBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
-                    Сгенерировать вопросы
-                </button>
-            </div>
+        <div class="mb-6">
+            <label for="difficultySelect" class="block text-gray-700 text-sm font-bold mb-2">Выберите уровень сложности:</label>
+            <select id="difficultySelect" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500">
+                <option value="easy" selected>Облегченный уровень (Easier Module)</option>
+                <option value="hard">Усложненный уровень (Harder Module 2)</option>
+            </select>
         </div>
 
+        <button id="generateBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 mb-8">
+            Сгенерировать вопросы
+        </button>
+
         <div id="loadingIndicator" class="loading-indicator text-center" style="display: none;">
-            <!-- Индикатор загрузки и сообщения будут здесь -->
+            <!-- Loading message and timer will be inserted here by JavaScript -->
         </div>
 
         <div id="questionsContainer" class="space-y-10">
-            <!-- Вопросы будут загружены здесь -->
+            <!-- Questions will be loaded here -->
         </div>
-        
-        <div id="quizControls" class="mt-8 flex flex-col sm:flex-row justify-between gap-4">
+
+        <div class="flex flex-col sm:flex-row justify-between gap-4 mt-4">
             <button id="nextBtn" class="w-full sm:w-1/2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75" style="display: none;">
                 Следующий вопрос
             </button>
-            <button id="startNewTestBtn" class="w-full sm:w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75" style="display: none;">
-                Начать новый тест
+            <button id="saveAndExitBtn" class="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75" style="display: none;">
+                Сохранить и выйти
             </button>
         </div>
     </div>
 
     <script type="module">
+        // Import the Google Generative AI library
         import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
 
+        // Initialize Firebase (required for Canvas environment, even if not directly used for auth in this example)
+        // This ensures __app_id and __firebase_config are handled correctly.
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const apiKey = ""; 
 
+        // Gemini API Key: Вставьте ваш реальный API-ключ Gemini здесь, заключив его в кавычки.
+        // Пример: const apiKey = "AIzaSyC_YourActualKeyGoesHere";
+        const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs"; // <--- Вставьте ваш API-ключ сюда, заменив пустые кавычки
+
+        // Initialize Google Generative AI
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
 
@@ -215,14 +219,13 @@
         const loginBtn = document.getElementById('loginBtn');
         const loginError = document.getElementById('loginError');
         const appContent = document.getElementById('appContent');
+
         const questionsContainer = document.getElementById('questionsContainer');
         const generateBtn = document.getElementById('generateBtn');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const difficultySelect = document.getElementById('difficultySelect');
         const nextBtn = document.getElementById('nextBtn');
-        const startNewTestBtn = document.getElementById('startNewTestBtn');
-
-        const CORRECT_PASSWORD = "Jaleel2010";
+        const saveAndExitBtn = document.getElementById('saveAndExitBtn');
 
         const categories = {
             "Information and Ideas": "information_ideas",
@@ -230,102 +233,240 @@
             "Expression of Ideas": "expression_ideas",
             "Standard English Conventions": "standard_english_conventions"
         };
-        
-        let allGeneratedQuestions = {};
-        let categoriesArray = Object.keys(categories);
+
+        // Global state to manage questions and current position
+        let allGeneratedQuestions = {}; // Stores questions by category (e.g., { 'information_ideas': [q1, q2, q3, q4] })
+        let categoriesArray = Object.keys(categories); // Array of category titles for ordered access
         let currentCategoryIndex = 0;
         let currentQuestionIndex = 0;
-        let score = 0;
-        let isQuizActive = false;
 
-        function toRoman(num) {
-            if (typeof num !== 'number' || num <= 0) return '';
-            const romanNumerals = [{ value: 1000, symbol: 'M' }, { value: 900, symbol: 'CM' }, { value: 500, symbol: 'D' }, { value: 400, symbol: 'CD' }, { value: 100, symbol: 'C' }, { value: 90, symbol: 'XC' }, { value: 50, symbol: 'L' }, { value: 40, symbol: 'XL' }, { value: 10, symbol: 'X' }, { value: 9, symbol: 'IX' }, { value: 5, symbol: 'V' }, { value: 4, symbol: 'IV' }, { value: 1, symbol: 'I' }];
-            let result = '';
-            for (let i = 0; i < romanNumerals.length; i++) {
-                while (num >= romanNumerals[i].value) {
-                    result += romanNumerals[i].symbol;
-                    num -= romanNumerals[i].value;
-                }
-            }
-            return result;
+        // Hardcoded password for client-side authentication
+        const CORRECT_PASSWORD = "Jaleel2010";
+
+        // Inactivity timer variables
+        let inactivityTimer;
+        const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+        
+        // Countdown timer variables
+        let countdownInterval;
+        const COUNTDOWN_SECONDS = 90;
+
+        // Function to reset the inactivity timer
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(logoutUser, INACTIVITY_TIMEOUT);
         }
 
-        function showCustomMessage(message) {
-            const modalOverlay = document.createElement('div');
-            modalOverlay.className = 'fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50';
-            modalOverlay.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm mx-auto">
-                    <p class="text-lg font-semibold mb-4">${message}</p>
-                    <button id="messageOk" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">OK</button>
-                </div>
-            `;
-            document.body.appendChild(modalOverlay);
-            document.getElementById('messageOk').addEventListener('click', () => {
-                document.body.removeChild(modalOverlay);
+        // Function to save the current session state
+        function saveSession() {
+            if (Object.keys(allGeneratedQuestions).length > 0) { // Only save if questions have been generated
+                const sessionData = {
+                    categoryIndex: currentCategoryIndex,
+                    questionIndex: currentQuestionIndex,
+                    questions: allGeneratedQuestions,
+                    difficulty: difficultySelect.value
+                };
+                localStorage.setItem('satQuizSession', JSON.stringify(sessionData));
+                console.log('Session saved.');
+            }
+        }
+
+        // Function to load a saved session state
+        function loadSession() {
+            const savedSession = localStorage.getItem('satQuizSession');
+            if (savedSession) {
+                const sessionData = JSON.parse(savedSession);
+                // Using a custom modal dialog instead of alert/confirm
+                const confirmation = showCustomConfirm('Обнаружена незавершенная сессия. Хотите продолжить с того места, где остановились?');
+                
+                return new Promise(resolve => {
+                    confirmation.then(resume => {
+                        if (resume) {
+                            currentCategoryIndex = sessionData.categoryIndex;
+                            currentQuestionIndex = sessionData.questionIndex;
+                            allGeneratedQuestions = sessionData.questions;
+                            difficultySelect.value = sessionData.difficulty; // Set difficulty to saved one
+                            console.log('Session loaded. Resuming test.');
+                            resolve(true); // Session resumed
+                        } else {
+                            localStorage.removeItem('satQuizSession'); // Clear if user doesn't want to resume
+                            console.log('Saved session discarded.');
+                            resolve(false); // Session not resumed
+                        }
+                    });
+                });
+            }
+            return Promise.resolve(false); // No session found, resolve with false
+        }
+
+        // Custom confirmation dialog (replaces alert/confirm)
+        function showCustomConfirm(message) {
+            return new Promise(resolve => {
+                const modalOverlay = document.createElement('div');
+                modalOverlay.className = 'fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50';
+                modalOverlay.innerHTML = `
+                    <div class="bg-white p-6 rounded-lg shadow-xl text-center max-w-sm mx-auto">
+                        <p class="text-lg font-semibold mb-4">${message}</p>
+                        <div class="flex justify-center space-x-4">
+                            <button id="confirmYes" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">Да</button>
+                            <button id="confirmNo" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition duration-200">Нет</button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modalOverlay);
+
+                document.getElementById('confirmYes').addEventListener('click', () => {
+                    document.body.removeChild(modalOverlay);
+                    resolve(true);
+                });
+                document.getElementById('confirmNo').addEventListener('click', () => {
+                    document.body.removeChild(modalOverlay);
+                    resolve(false);
+                });
             });
         }
-        
-        loginBtn.addEventListener('click', () => {
-            if (passwordInput.value.trim() === CORRECT_PASSWORD) {
+
+
+        // Function to log out the user and reset the app state
+        function logoutUser(saveCurrent = true) { // Added parameter to control saving
+            if (saveCurrent) {
+                saveSession(); // Save session before logging out
+            } else {
+                localStorage.removeItem('satQuizSession'); // Clear session if not saving
+            }
+
+            // Hide app content and show login screen
+            appContent.style.display = 'none';
+            loginScreen.style.display = 'block';
+            passwordInput.value = ''; // Clear password field
+            loginError.style.display = 'none'; // Hide any login error message
+
+            // Reset application state (only if not saving or after saving)
+            allGeneratedQuestions = {};
+            currentCategoryIndex = 0;
+            currentQuestionIndex = 0;
+
+            // Hide all buttons that appear after login/generation
+            nextBtn.style.display = 'none';
+            saveAndExitBtn.style.display = 'none';
+            generateBtn.disabled = false;
+            generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            questionsContainer.innerHTML = ''; // Clear questions display
+            loadingIndicator.style.display = 'none'; // Ensure loading indicator is hidden
+            loadingIndicator.innerHTML = ''; // Clear loading message
+
+            // Stop any existing inactivity timer and countdown timer
+            clearTimeout(inactivityTimer);
+            clearInterval(countdownInterval);
+        }
+
+        // Event listeners for user activity to reset the timer
+        document.addEventListener('mousemove', resetInactivityTimer);
+        document.addEventListener('keypress', resetInactivityTimer);
+        document.addEventListener('click', resetInactivityTimer);
+        document.addEventListener('scroll', resetInactivityTimer);
+
+        // Initial check for activity when the page loads
+        resetInactivityTimer();
+
+        // Login function
+        loginBtn.addEventListener('click', async () => { // Made async to await loadSession
+            if (passwordInput.value === CORRECT_PASSWORD) {
                 loginScreen.style.display = 'none';
                 appContent.style.display = 'block';
                 loginError.style.display = 'none';
+                
+                const sessionResumed = await loadSession(); // Await the promise
+                if (sessionResumed) {
+                    displayCurrentQuestion(); // Display the resumed question
+                    // Ensure buttons are correctly displayed/enabled for resumed session
+                    nextBtn.style.display = 'block';
+                    saveAndExitBtn.style.display = 'block';
+                    nextBtn.disabled = true; // Still disabled until answer is picked
+                    nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                } else {
+                    // If no session or user chose not to resume, start fresh
+                    questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
+                    generateBtn.style.display = 'block'; // Ensure generate button is visible
+                    nextBtn.style.display = 'none';
+                    saveAndExitBtn.style.display = 'none';
+                }
+                resetInactivityTimer(); // Start timer after successful login
             } else {
                 loginError.style.display = 'block';
             }
         });
 
+        // Allow pressing Enter key to login
         passwordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 loginBtn.click();
             }
         });
+        
+        // Function to start the countdown timer
+        function startCountdown() {
+            let timeLeft = COUNTDOWN_SECONDS;
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = `Осталось времени: ${timeLeft} сек.`;
 
-        function showLoading(message) {
-            questionsContainer.innerHTML = '';
+            countdownInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft >= 0) {
+                    timerElement.textContent = `Осталось времени: ${timeLeft} сек.`;
+                } else {
+                    clearInterval(countdownInterval);
+                    timerElement.textContent = 'Время вышло, генерация продолжается...';
+                }
+            }, 1000);
+        }
+
+
+        // Function to show loading indicator
+        function showLoading() {
+            questionsContainer.innerHTML = ''; // Clear previous questions
             loadingIndicator.innerHTML = `
-                <p class="text-xl font-semibold mb-4 text-gray-700">${message}</p>
+                <p class="text-xl font-semibold mb-4 text-gray-700">Генерация вопросов... это может занять несколько секунд.</p>
+                <div id="timer" class="text-md font-medium text-gray-500 mb-4"></div>
                 <div class="mt-4">
                     <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto"></div>
                 </div>
             `;
-            loadingIndicator.style.display = 'block';
+            loadingIndicator.style.display = 'block'; // Make loading indicator visible
             generateBtn.disabled = true;
             generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            nextBtn.style.display = 'none';
-            startNewTestBtn.style.display = 'none';
+            nextBtn.style.display = 'none'; // Hide next button during generation
+            saveAndExitBtn.style.display = 'none'; // Hide save and exit button during generation
+            
+            clearInterval(countdownInterval); // Clear any old timer
+            startCountdown(); // Start the new countdown
         }
 
+        // Function to hide loading indicator
         function hideLoading() {
-            loadingIndicator.style.display = 'none';
-            loadingIndicator.innerHTML = '';
+            loadingIndicator.style.display = 'none'; // Hide loading indicator
+            loadingIndicator.innerHTML = ''; // Clear its content
             generateBtn.disabled = false;
             generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            clearInterval(countdownInterval); // Stop the countdown timer
         }
 
-        async function generateQuestionsForCategory(categoryTitle, difficulty, retries = 0) {
-            const MAX_RETRIES = 3;
-            const BASE_DELAY_MS = 1000;
-            const numberOfQuestions = 4;
+        // Function to generate multiple questions for a given category with exponential backoff
+        async function generateQuestionsForCategory(categoryName, categoryKey, difficulty, retries = 0) {
+            const MAX_RETRIES = 5;
+            const BASE_DELAY_MS = 1000; // 1 second
 
-            const prompt = `
-                Generate a JSON array with exactly ${numberOfQuestions} unique and diverse SAT-style questions for the "${categoryTitle}" category. The difficulty should be suitable for a ${difficulty === 'hard' ? 'harder module' : 'easier module'}.
-                
-                For each question, provide:
-                1.  "passage": A short, academic passage in English.
-                2.  "question": A multiple-choice question in English based on the passage.
-                3.  "options": An array of four option objects (A, B, C, D), each with a "label" and "text" in English.
-                4.  "correct_answer": The label of the correct option (e.g., "A").
-                5.  "explanation": A brief explanation in Russian.
-                6.  "vocabulary": An array of 4-5 objects. Each has a "word", Russian "translation", and Russian "explanation".
+            let prompt = "";
+            let topic = "general knowledge"; // Default topic, can be varied
+            const numberOfQuestions = 4; // We want 4 questions per category
 
-                For "Craft and Structure" questions, one word or phrase in the passage should be enclosed in double asterisks, like **word**.
-                For "Standard English Conventions" questions, the grammatically incorrect part should be enclosed in double asterisks, like **incorrect part**.
+            const difficultyModifier = difficulty === 'hard' ? 'challenging' : 'straightforward';
+            const wordCountRange = difficulty === 'hard' ? '60-80' : '40-60';
+            const analyticalSkill = difficulty === 'hard' ? 'deep analytical skills' : 'basic comprehension';
+            const grammaticalNuance = difficulty === 'hard' ? 'complex grammatical error' : 'common grammatical error';
+            const rhetoricalEffect = difficulty === 'hard' ? 'advanced rhetorical effect' : 'clear and concise expression';
 
-                Provide only the JSON array.
-            `;
-
+            // Define the JSON schema for the expected output
             const responseSchema = {
                 type: "ARRAY",
                 items: {
@@ -334,36 +475,69 @@
                         passage: { type: "STRING" },
                         question: { type: "STRING" },
                         options: {
-                            "type": "ARRAY",
-                            "items": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "label": { "type": "STRING" },
-                                    "text": { "type": "STRING" }
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    label: { type: "STRING" },
+                                    text: { type: "STRING" }
                                 },
-                                "required": ["label", "text"]
+                                required: ["label", "text"]
                             }
                         },
-                        "correct_answer": { "type": "STRING" },
-                        "explanation": { "type": "STRING" },
-                        "vocabulary": {
-                            "type": "ARRAY",
-                            "items": {
-                                "type": "OBJECT",
-                                "properties": {
-                                    "word": { "type": "STRING" },
-                                    "translation": { "type": "STRING" },
-                                    "explanation": { "type": "STRING" }
+                        correct_answer: { type: "STRING" },
+                        explanation: { type: "STRING" },
+                        vocabulary: { // New vocabulary field
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    word: { "type": "STRING" },
+                                    translation: { "type": "STRING" },
+                                    explanation: { "type": "STRING" } // Added explanation for vocabulary
                                 },
-                                "required": ["word", "translation", "explanation"]
+                                required: ["word", "translation", "explanation"]
                             }
                         }
                     },
-                    "required": ["passage", "question", "options", "correct_answer", "explanation", "vocabulary"]
+                    required: ["passage", "question", "options", "correct_answer", "explanation"]
                 }
             };
-            
+
+            // Base prompt structure for generating multiple questions in a JSON array
+            const basePrompt = (passageType, questionType, highlightInstruction = '') => `
+                Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryName}" questions.
+                For each question, provide:
+                1. A short, ${difficultyModifier} academic-style passage (${wordCountRange} words) on a distinct topic (e.g., ${passageType}). Ensure variety in topics and phrasing.
+                2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer. Avoid direct repetition of concepts or exact wording from previous questions.
+                3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
+                4. The correct answer label (e.g., "A").
+                5. A brief explanation (1-2 sentences) in Russian for the correct answer.
+                6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form (preserving its original casing from the passage), its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                ${highlightInstruction}
+            `;
+
+            switch (categoryKey) {
+                case "information_ideas":
+                    prompt = basePrompt('advanced science, philosophy, nuanced history, art criticism, economic theory', 'Information and Ideas (e.g., main idea, detail, or inference)');
+                    break;
+                case "craft_structure":
+                    prompt = basePrompt('literary analysis, rhetorical strategy, stylistic choices, author\'s intent', 'Vocabulary in Context or Rhetorical Purpose', `
+                    For "Craft and Structure" questions, one ${difficulty === 'hard' ? 'nuanced word or phrase with subtle meanings or a complex rhetorical device' : 'common word or phrase with a clear meaning in context'} in the passage should be highlighted by enclosing it in double asterisks (e.g., **word**). Ensure variety in highlighted elements and passage themes.
+                    `);
+                    break;
+                case "expression_ideas":
+                    prompt = basePrompt('research methodology, policy analysis, argumentation, essay structure', 'Expression of Ideas (e.g., best revision, addition, or transition to improve ${rhetoricalEffect})');
+                    break;
+                case "standard_english_conventions":
+                    prompt = basePrompt('scientific principles, historical analysis, grammar rules, syntax', 'Standard English Conventions (asking to correct a ${grammaticalNuance})', `
+                    For "Standard English Conventions" questions, the part with the grammatical error in the passage should be highlighted by enclosing it in double asterisks. Ensure variety in grammatical errors and passage themes.
+                    `);
+                    break;
+            }
+
             try {
+                // Use generationConfig to enforce JSON schema
                 const result = await model.generateContent({
                     contents: [{ role: "user", parts: [{ text: prompt }] }],
                     generationConfig: {
@@ -371,235 +545,296 @@
                         responseSchema: responseSchema
                     }
                 });
-
-                const rawResponse = result?.response?.text();
-                if (!rawResponse || rawResponse.trim() === '') {
-                    throw new Error("API returned an empty response.");
+                
+                // The response should now be directly parsable JSON
+                const questionsArray = JSON.parse(result.response.text());
+                
+                // Ensure the response is indeed an array
+                if (!Array.isArray(questionsArray)) {
+                    throw new Error("API did not return a JSON array of questions.");
                 }
-
-                // Robust JSON parsing to handle potential model quirks
-                const jsonMatch = rawResponse.match(/\[.*?\]/s);
-                if (!jsonMatch) {
-                    throw new Error("Could not find a valid JSON array in the API response.");
-                }
-                const cleanedResponse = jsonMatch[0];
-                const questionsArray = JSON.parse(cleanedResponse);
-
-                if (!Array.isArray(questionsArray) || questionsArray.length !== numberOfQuestions) {
-                    throw new Error("API returned an incorrect number of questions or non-array format.");
-                }
-                return questionsArray;
+                return questionsArray; // Return the array of questions
             } catch (error) {
-                console.error(`Error generating questions for ${categoryTitle}:`, error);
+                console.error(`Error generating questions for ${categoryName} (Difficulty: ${difficulty}):`, error);
+                
+                // Implement exponential backoff for retries
                 if (retries < MAX_RETRIES) {
-                    const delay = BASE_DELAY_MS * Math.pow(2, retries) + (Math.random() * 500);
+                    const delay = BASE_DELAY_MS * Math.pow(2, retries) + (Math.random() * 100); // Add jitter
+                    console.warn(`Retrying ${categoryName} question generation in ${delay}ms (retry ${retries + 1}/${MAX_RETRIES})...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
-                    return generateQuestionsForCategory(categoryTitle, difficulty, retries + 1);
+                    return generateQuestionsForCategory(categoryName, categoryKey, difficulty, retries + 1);
                 }
-                loadingIndicator.innerHTML = `<p class='text-red-600'>Произошла ошибка при генерации вопросов для категории "${categoryTitle}". Пожалуйста, попробуйте еще раз. Ошибка: ${error.message}</p>`;
-                hideLoading();
-                return null;
+
+                let errorMessage = `<p class='text-red-600'>Произошла ошибка при генерации вопросов для категории "${categoryName}" (Уровень: ${difficulty === 'hard' ? 'Усложненный' : 'Облегченный'}). Пожалуйста, попробуйте еще раз.</p>`;
+
+                if (error.message) {
+                    if (error.message.includes("403") && error.message.includes("unregistered callers")) {
+                        errorMessage = "<p class='text-red-600'>Ошибка: Проблема с доступом к Gemini API (ошибка 403). Пожалуйста, убедитесь, что ваш API-ключ действителен и имеет необходимые разрешения для модели 'gemini-2.5-flash-preview-05-20' в Google Cloud Console.</p>";
+                    } else if (error.message.includes("API key not valid")) {
+                        errorMessage = "<p class='text-red-600'>Ошибка: API ключ Gemini недействителен. Пожалуйста, убедитесь, что он правильно настроен в вашей среде.</p>";
+                    } else if (error.message.includes("JSON")) {
+                         errorMessage = `<p class='text-red-600'>Ошибка парсинга JSON для категории "${categoryName}". Модель вернула некорректный формат. Пожалуйста, попробуйте еще раз.</p>`;
+                    }
+                }
+                loadingIndicator.innerHTML = errorMessage; // Display error message in loading indicator area
+                hideLoading(); // Hide loading indicator (which now contains the error message)
+                return null; // Return null if all retries fail
             }
         }
-        
-        function createQuestionCard(questionData, categoryTitle, questionNumber, isFinalReview = false) {
+
+        // Function to display a single question
+        function displayQuestion(questionData, categoryTitle) {
+            if (!questionData) return;
+
             const questionCard = document.createElement('div');
             questionCard.className = 'question-card';
-            
-            const categoryHeader = document.createElement('h3');
-            categoryHeader.className = 'text-xl font-semibold text-gray-700 mb-2';
-            categoryHeader.textContent = `${toRoman(categoriesArray.indexOf(categoryTitle) + 1)}. ${categoryTitle}`;
-            questionCard.appendChild(categoryHeader);
 
             let passageContent = questionData.passage;
-            if (questionData.vocabulary) {
+
+            // First, add tooltips for vocabulary words
+            if (questionData.vocabulary && Array.isArray(questionData.vocabulary)) {
                 questionData.vocabulary.forEach(vocabItem => {
-                    const regex = new RegExp(`\\b${vocabItem.word}\\b`, 'gi');
+                    // Use a regex with global and case-insensitive flags for whole word match
+                    // Escape special characters in the word for regex safety
+                    const escapedWord = vocabItem.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`\\b${escapedWord}\\b`, 'gi'); 
+                    // Use a replacement function to preserve the original casing of the matched word
                     passageContent = passageContent.replace(regex, (matchedWord) => {
+                        // Capitalize the first letter and make it bold for the tooltip display
                         const formattedWordInTooltip = `<strong>${matchedWord.charAt(0).toUpperCase() + matchedWord.slice(1)}</strong>`;
                         return `<span class="tooltip-container">${matchedWord}<span class="tooltip-text">${formattedWordInTooltip}: ${vocabItem.translation}: ${vocabItem.explanation}</span></span>`;
                     });
                 });
             }
 
-            if (categoryTitle === "Craft and Structure") {
-                passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline">$1</span>`);
+            // Then, apply highlighting for Craft and Structure / Standard English Conventions
+            if (questionData.highlighted_word && categoryTitle === "Craft and Structure") {
+                // Ensure the highlighted word is replaced correctly, even if it's inside a tooltip-container
+                const escapedHighlightedWord = questionData.highlighted_word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const highlightRegex = new RegExp(`\\b${escapedHighlightedWord}\\b`, 'gi');
+                passageContent = passageContent.replace(highlightRegex, `<span class="font-bold underline">${questionData.highlighted_word}</span>`);
             } else if (categoryTitle === "Standard English Conventions") {
+                // For Standard English Conventions, the error part is highlighted by **...**
                 passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline text-red-600">$1</span>`);
             }
 
             const passageDiv = document.createElement('div');
             passageDiv.className = 'question-passage';
-            passageDiv.innerHTML = passageContent;
+            passageDiv.innerHTML = passageContent; // Use innerHTML to render bold/underline/tooltips
 
             const questionTextDiv = document.createElement('div');
             questionTextDiv.className = 'question-text';
-            questionTextDiv.textContent = `Question ${questionNumber}: ${questionData.question}`;
+            questionTextDiv.textContent = questionData.question;
 
             const optionsList = document.createElement('div');
             optionsList.className = 'options-list';
 
-            questionData.options.forEach(option => {
-                const optionItem = document.createElement('div');
-                optionItem.className = 'option-item px-4';
-                optionItem.textContent = `${option.label}) ${option.text}`;
-                optionItem.dataset.label = option.label;
-
-                if (isFinalReview) {
-                    optionItem.classList.add('disabled');
-                    if (option.label === questionData.correct_answer) {
-                        optionItem.classList.add('correct');
-                    }
-                    if (questionData.selectedAnswer === option.label && option.label !== questionData.correct_answer) {
-                        optionItem.classList.add('incorrect');
-                    }
-                } else {
-                    optionItem.addEventListener('click', () => {
-                        const selectedLabel = optionItem.dataset.label;
-                        questionData.selectedAnswer = selectedLabel;
-
-                        if (selectedLabel === questionData.correct_answer) {
-                            optionItem.classList.add('correct');
-                            score++;
-                        } else {
-                            optionItem.classList.add('incorrect');
-                            const correctAnswerElement = questionsContainer.querySelector(`[data-label="${questionData.correct_answer}"]`);
-                            if (correctAnswerElement) {
-                                correctAnswerElement.classList.add('correct');
-                            }
-                        }
-                        
-                        questionsContainer.querySelectorAll('.option-item').forEach(opt => opt.classList.add('disabled'));
-                        
-                        nextBtn.style.display = 'block';
-                        nextBtn.disabled = false;
-                        nextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    });
+            // Ensure questionData.options is an array before iterating
+            let optionsToDisplay = questionData.options;
+            if (typeof optionsToDisplay === 'string') {
+                try {
+                    optionsToDisplay = JSON.parse(optionsToDisplay);
+                } catch (e) {
+                    console.warn("Could not parse options string:", optionsToDisplay, e);
+                    optionsToDisplay = []; // Fallback to empty array if parsing fails
                 }
-                optionsList.appendChild(optionItem);
-            });
+            }
+            if (!Array.isArray(optionsToDisplay)) {
+                console.warn("questionData.options is not an array after processing:", optionsToDisplay);
+                optionsToDisplay = []; // Ensure it's an array for forEach
+            }
 
             const explanationDiv = document.createElement('div');
             explanationDiv.className = 'explanation';
-            explanationDiv.innerHTML = `<strong>Объяснение:</strong> ${questionData.explanation}`;
-            if (isFinalReview || questionData.selectedAnswer) {
-                explanationDiv.style.display = 'block';
-            }
+            explanationDiv.textContent = `Объяснение: ${questionData.explanation}`;
+            explanationDiv.style.display = 'none'; // Initially hidden
+
+            optionsToDisplay.forEach(option => {
+                const optionItem = document.createElement('div');
+                optionItem.className = `option-item px-4 py-2 cursor-pointer rounded-md transition duration-200 ease-in-out hover:bg-gray-100`;
+                optionItem.textContent = `${option.label}. ${option.text}`;
+                optionItem.dataset.label = option.label; // Store option label
+                optionItem.dataset.correctAnswer = questionData.correct_answer; // Store correct answer
+
+                optionItem.addEventListener('click', function() {
+                    // Disable all options for this question after a choice is made
+                    optionsList.querySelectorAll('.option-item').forEach(opt => {
+                        opt.classList.add('disabled');
+                        opt.style.pointerEvents = 'none'; // Ensure it's truly unclickable
+                    });
+
+                    const selectedLabel = this.dataset.label;
+                    const correctAnswerLabel = this.dataset.correctAnswer;
+
+                    // Apply correct/incorrect styling and show explanation
+                    optionsList.querySelectorAll('.option-item').forEach(opt => {
+                        if (opt.dataset.label === correctAnswerLabel) {
+                            opt.classList.add('correct');
+                        } else if (opt.dataset.label === selectedLabel) { // This is the selected, but incorrect, option
+                            opt.classList.add('incorrect');
+                        }
+                    });
+
+                    // Show the explanation
+                    explanationDiv.style.display = 'block'; // Make sure explanation is visible
+
+                    // Enable next button after an answer is selected
+                    nextBtn.disabled = false;
+                    nextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    resetInactivityTimer(); // Reset timer on interaction
+                });
+                optionsList.appendChild(optionItem);
+            });
 
             questionCard.appendChild(passageDiv);
             questionCard.appendChild(questionTextDiv);
             questionCard.appendChild(optionsList);
-            questionCard.appendChild(explanationDiv);
-            
+            questionCard.appendChild(explanationDiv); // Append explanation after options
+
             return questionCard;
         }
 
+        // Function to display the current question based on global indices
         function displayCurrentQuestion() {
             const currentCategoryTitle = categoriesArray[currentCategoryIndex];
-            const currentQuestions = allGeneratedQuestions[currentCategoryTitle];
+            const currentCategoryKey = categories[currentCategoryTitle];
+            const questionsInCurrentCategory = allGeneratedQuestions[currentCategoryKey];
 
-            if (currentQuestions && currentQuestions.length > currentQuestionIndex) {
-                let totalQuestionsCount = 0;
-                for (let i = 0; i < currentCategoryIndex; i++) {
-                    totalQuestionsCount += allGeneratedQuestions[categoriesArray[i]].length;
+            if (questionsInCurrentCategory && questionsInCurrentCategory.length > currentQuestionIndex) {
+                questionsContainer.innerHTML = ''; // Clear previous question
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = 'category-section mb-10';
+
+                const sectionTitle = document.createElement('h2');
+                sectionTitle.className = 'text-2xl font-semibold text-gray-700 mb-6 section-title';
+                sectionTitle.textContent = `${currentCategoryTitle} (Вопрос ${currentQuestionIndex + 1} из ${questionsInCurrentCategory.length})`;
+                sectionDiv.appendChild(sectionTitle);
+
+                const questionData = questionsInCurrentCategory[currentQuestionIndex];
+                const questionCard = displayQuestion(questionData, currentCategoryTitle);
+                if (questionCard) {
+                    sectionDiv.appendChild(questionCard);
                 }
-                const currentQuestionNumber = totalQuestionsCount + currentQuestionIndex + 1;
-                
-                const questionData = currentQuestions[currentQuestionIndex];
-                const questionCard = createQuestionCard(questionData, currentCategoryTitle, currentQuestionNumber);
-                
-                questionsContainer.innerHTML = '';
-                questionsContainer.appendChild(questionCard);
-                
-                nextBtn.style.display = 'block';
+                questionsContainer.appendChild(sectionDiv);
+
+                // Disable next button until an answer is selected
                 nextBtn.disabled = true;
                 nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                nextBtn.style.display = 'block'; // Ensure next button is visible
+                saveAndExitBtn.style.display = 'block'; // Ensure save and exit button is visible
+
+                // Update next button text and hide "Save and Exit" on the last question
+                const isLastQuestion = (currentCategoryIndex === categoriesArray.length - 1 && currentQuestionIndex === questionsInCurrentCategory.length - 1);
+                if (isLastQuestion) {
+                    nextBtn.textContent = 'Завершить тест';
+                    saveAndExitBtn.style.display = 'none'; // Hide "Сохранить и выйти" on the very last question
+                } else {
+                    nextBtn.textContent = 'Следующий вопрос';
+                    saveAndExitBtn.style.display = 'block'; // Show "Сохранить и выйти" on other questions
+                }
+
             } else {
-                endQuiz();
+                // This case should ideally not be hit if logic is correct, but as a fallback
+                console.warn("No more questions to display in current category or category not found.");
+                endQuiz(); // Call end quiz function directly
             }
         }
-        
-        function endQuiz() {
-            isQuizActive = false;
-            questionsContainer.innerHTML = '';
-            
-            let totalQuestions = 0;
-            const finalScore = score;
-            const finalResultsHeader = document.createElement('h2');
-            finalResultsHeader.className = 'text-3xl font-bold text-center text-gray-800 mb-6';
-            
-            const resultsSummary = document.createElement('p');
-            resultsSummary.className = 'text-center text-xl font-medium text-gray-700 mb-8';
 
-            const questionsReviewContainer = document.createElement('div');
-            questionsReviewContainer.className = 'space-y-6 mt-8';
-
-            for (const categoryTitle of categoriesArray) {
-                allGeneratedQuestions[categoryTitle].forEach((q, index) => {
-                    totalQuestions++;
-                    const questionCard = createQuestionCard(q, categoryTitle, totalQuestions, true);
-                    questionsReviewContainer.appendChild(questionCard);
-                });
-            }
+        // Main function to generate all questions and start the quiz
+        async function generateAllQuestions() {
+            showLoading(); // Show loading indicator at the start
             
-            finalResultsHeader.textContent = 'Тест завершен!';
-            resultsSummary.textContent = `Ваш результат: ${finalScore} из ${totalQuestions}.`;
-            
-            questionsContainer.appendChild(finalResultsHeader);
-            questionsContainer.appendChild(resultsSummary);
-            questionsContainer.appendChild(questionsReviewContainer);
+            // Clear any existing session when starting a new test
+            localStorage.removeItem('satQuizSession'); 
 
-            nextBtn.style.display = 'none';
-            startNewTestBtn.style.display = 'block';
-        }
-        
-        generateBtn.addEventListener('click', async () => {
-            isQuizActive = true;
-            allGeneratedQuestions = {};
+            allGeneratedQuestions = {}; // Reset for new generation
             currentCategoryIndex = 0;
             currentQuestionIndex = 0;
-            score = 0;
+            categoriesArray = Object.keys(categories); // Update categories array
 
-            const difficulty = difficultySelect.value;
-            const numCategories = categoriesArray.length;
-
-            for (const [index, categoryTitle] of categoriesArray.entries()) {
-                showLoading(`Генерация вопросов для категории: ${categoryTitle} (${index + 1} из ${numCategories})...`);
-                const questions = await generateQuestionsForCategory(categoryTitle, difficulty);
+            let allSuccessful = true;
+            for (const categoryTitle of categoriesArray) {
+                const categoryKey = categories[categoryTitle];
+                const selectedDifficulty = difficultySelect.value;
+                const questionsForCategory = await generateQuestionsForCategory(categoryTitle, categoryKey, selectedDifficulty);
                 
-                if (!questions) {
-                    isQuizActive = false;
-                    return;
-                }
-                allGeneratedQuestions[categoryTitle] = questions;
-            }
-            hideLoading();
-            questionsContainer.innerHTML = '';
-            displayCurrentQuestion();
-        });
-
-        nextBtn.addEventListener('click', () => {
-            currentQuestionIndex++;
-            if (currentQuestionIndex < allGeneratedQuestions[categoriesArray[currentCategoryIndex]].length) {
-                displayCurrentQuestion();
-            } else {
-                currentCategoryIndex++;
-                currentQuestionIndex = 0;
-                if (currentCategoryIndex < categoriesArray.length) {
-                    displayCurrentQuestion();
+                if (questionsForCategory && questionsForCategory.length > 0) {
+                    allGeneratedQuestions[categoryKey] = questionsForCategory;
                 } else {
-                    endQuiz();
+                    allSuccessful = false;
+                    const errorCard = document.createElement('div');
+                    errorCard.className = 'question-card bg-red-100 text-red-800';
+                    errorCard.textContent = `Не удалось сгенерировать вопросы для категории "${categoryTitle}". Пожалуйста, попробуйте еще раз.`;
+                    questionsContainer.appendChild(errorCard);
                 }
             }
-        });
-        
-        startNewTestBtn.addEventListener('click', () => {
-            startNewTestBtn.style.display = 'none';
-            questionsContainer.innerHTML = `
-                <p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>
-            `;
-        });
+            hideLoading(); // Hide loading indicator after all generations are complete
 
+            if (allSuccessful && categoriesArray.length > 0 && allGeneratedQuestions[categories[categoriesArray[0]]]) {
+                nextBtn.style.display = 'block'; // Show next button
+                saveAndExitBtn.style.display = 'block'; // Show save and exit button (will be hidden on last question by displayCurrentQuestion)
+                displayCurrentQuestion(); // Display the first question
+                resetInactivityTimer(); // Reset timer after generation
+            } else {
+                nextBtn.style.display = 'none'; // Hide next button if generation failed
+                saveAndExitBtn.style.display = 'none'; // Hide save and exit button if generation failed
+            }
+        }
+
+        // Function to handle navigation to the next question
+        function handleNextQuestion() {
+            const currentCategoryKey = categories[categoriesArray[currentCategoryIndex]];
+            const questionsInCurrentCategory = allGeneratedQuestions[currentCategoryKey];
+
+            currentQuestionIndex++;
+            if (currentQuestionIndex >= questionsInCurrentCategory.length) {
+                currentQuestionIndex = 0;
+                currentCategoryIndex++;
+            }
+
+            if (currentCategoryIndex >= categoriesArray.length) {
+                // All questions and categories are exhausted
+                endQuiz();
+            } else {
+                displayCurrentQuestion();
+                resetInactivityTimer(); // Reset timer on next question
+            }
+        }
+        
+        // Function to handle quiz completion
+        function endQuiz() {
+            questionsContainer.innerHTML = `
+                <div class="text-center text-gray-600 text-lg">
+                    <p class="text-3xl font-bold text-gray-800 mb-4">Тест завершен!</p>
+                    <p>Нажмите "Сгенерировать вопросы", чтобы начать заново.</p>
+                </div>
+            `;
+            nextBtn.style.display = 'none';
+            saveAndExitBtn.style.display = 'none'; // Hide save and exit button
+            generateBtn.disabled = false; // Re-enable main generate button
+            generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            clearTimeout(inactivityTimer); // Stop timer when test is finished
+            localStorage.removeItem('satQuizSession'); // Clear session when test is fully completed
+        }
+
+        // Function to handle saving and exiting the test
+        function handleSaveAndExit() {
+            logoutUser(); // Call logoutUser, which will save the current session by default
+            questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Тест сохранен. Вы можете сгенерировать новые вопросы.</p>';
+        }
+
+        // Attach event listeners
+        generateBtn.addEventListener('click', generateAllQuestions);
+        nextBtn.addEventListener('click', () => {
+            const isLastQuestion = (currentCategoryIndex === categoriesArray.length - 1 && 
+                                   currentQuestionIndex === allGeneratedQuestions[categories[categoriesArray[currentCategoryIndex]]].length - 1);
+            if (isLastQuestion) {
+                endQuiz();
+            } else {
+                handleNextQuestion();
+            }
+        });
+        saveAndExitBtn.addEventListener('click', handleSaveAndExit);
     </script>
 </body>
 </html>
