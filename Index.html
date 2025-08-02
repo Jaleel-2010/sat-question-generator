@@ -634,24 +634,30 @@
                 });
                 
                 const rawResponse = result?.response?.text();
-                if (!rawResponse) {
-                    throw new Error("API returned an empty or malformed response.");
+                if (!rawResponse || rawResponse.trim() === '') {
+                    console.error("API returned an empty or malformed response for", categoryName);
+                    throw new Error("API returned an empty response.");
                 }
 
-                // **NEW: Clean the response to ensure it's valid JSON.**
-                // This regex will find any string starting with '[' and ending with ']',
-                // which should be the JSON array itself, and ignore any surrounding text.
+                // Clean the response to ensure it's valid JSON.
                 const jsonMatch = rawResponse.match(/\[.*?\]/s);
                 if (!jsonMatch) {
+                    console.error("Could not find a valid JSON array in the API response for", categoryName, "Response:", rawResponse);
                     throw new Error("Could not find a valid JSON array in the API response.");
                 }
 
                 const cleanedResponse = jsonMatch[0];
-                const questionsArray = JSON.parse(cleanedResponse);
+                let questionsArray;
+                try {
+                    questionsArray = JSON.parse(cleanedResponse);
+                } catch (jsonError) {
+                    console.error("Failed to parse JSON for", categoryName, "Error:", jsonError, "Raw JSON:", cleanedResponse);
+                    throw new Error("Failed to parse JSON from the API response.");
+                }
                 
                 // Ensure the response is indeed an array
                 if (!Array.isArray(questionsArray) || questionsArray.length !== numberOfQuestions) {
-                    console.error("API returned an unexpected number of questions or non-array format:", cleanedResponse);
+                    console.error("API returned an unexpected number of questions or non-array format:", questionsArray);
                     throw new Error("API returned a JSON array with an incorrect number of questions.");
                 }
                 return questionsArray; // Return the array of questions
@@ -720,7 +726,6 @@
                 passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline">$1</span>`);
             } else if (categoryTitle === "Standard English Conventions") {
                 // For "Standard English Conventions", the error part is highlighted by **...**
-                // **FIXED: Added the .replace() method call which was missing.**
                 passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline text-red-600">$1</span>`);
             }
 
