@@ -180,7 +180,7 @@
         </button>
 
         <div id="loadingIndicator" class="loading-indicator text-center" style="display: none;">
-            <!-- Loading message and timer will be inserted here by JavaScript -->
+            <!-- Questions will be loaded here -->
         </div>
 
         <div id="questionsContainer" class="space-y-10">
@@ -245,7 +245,8 @@
 
         // Inactivity timer variables
         let inactivityTimer;
-        const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
+        // CHANGE: Inactivity timeout is now 5 minutes (5 * 60 * 1000 milliseconds)
+        const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
         
         // Countdown timer variables
         let countdownInterval;
