@@ -236,7 +236,7 @@
 
         // Global state to manage questions and current position
         let allGeneratedQuestions = {}; // Stores questions by category (e.g., { 'information_ideas': [q1, q2, q3, q4] })
-        let completedQuestions = []; // **НОВОЕ**: Массив для хранения всех вопросов с ответами пользователя
+        let completedQuestions = []; // Массив для хранения всех вопросов с ответами пользователя
         let categoriesArray = Object.keys(categories); // Array of category titles for ordered access
         let currentCategoryIndex = 0;
         let currentQuestionIndex = 0;
@@ -246,7 +246,7 @@
 
         // Inactivity timer variables
         let inactivityTimer;
-        // CHANGE: Inactivity timeout is now 5 minutes (5 * 60 * 1000 milliseconds)
+        // Inactivity timeout is now 5 minutes (5 * 60 * 1000 milliseconds)
         const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
         
         // Countdown timer variables
@@ -671,7 +671,7 @@
                     const selectedLabel = this.dataset.label;
                     const correctAnswerLabel = this.dataset.correctAnswer;
 
-                    // **НОВОЕ**: Записываем ответ пользователя в массив completedQuestions
+                    // Записываем ответ пользователя в массив completedQuestions
                     const questionWithAnswer = {
                         ...questionData,
                         user_answer: selectedLabel
@@ -746,9 +746,9 @@
                 }
 
             } else {
-                // This case should ideally not be hit if logic is correct, but as a fallback
-                console.warn("No more questions to display in current category or category not found.");
-                endQuiz(); // Call end quiz function directly
+                // This case should not be hit if logic is correct.
+                // Call end quiz function directly as a fallback.
+                endQuiz(); 
             }
         }
 
@@ -758,7 +758,7 @@
             
             // Clear any existing session when starting a new test
             localStorage.removeItem('satQuizSession'); 
-            completedQuestions = []; // **НОВОЕ**: Очищаем массив с ответами при начале нового теста
+            completedQuestions = []; // Очищаем массив с ответами при начале нового теста
 
             allGeneratedQuestions = {}; // Reset for new generation
             currentCategoryIndex = 0;
@@ -816,7 +816,7 @@
         
         // Function to handle quiz completion
         function endQuiz() {
-            // **НОВОЕ**: Сохраняем завершенный тест в локальное хранилище
+            // Сохраняем завершенный тест в локальное хранилище
             const completedTests = JSON.parse(localStorage.getItem('satCompletedTests') || '[]');
             const newCompletedTest = {
                 timestamp: new Date().toISOString(),
@@ -831,16 +831,21 @@
                 <div class="text-center text-gray-600 text-lg">
                     <p class="text-3xl font-bold text-gray-800 mb-4">Тест завершен!</p>
                     <p class="mb-4">Ваши результаты сохранены в локальном хранилище браузера.</p>
-                    <p>Нажмите "Сгенерировать вопросы", чтобы начать заново.</p>
+                    <p>Нажмите **"Сгенерировать вопросы"**, чтобы начать новый тест.</p>
                 </div>
             `;
+            
+            // --- НОВОЕ: Сброс состояния для возможности генерации нового теста ---
             nextBtn.style.display = 'none';
-            saveAndExitBtn.style.display = 'none'; // Hide save and exit button
+            saveAndExitBtn.style.display = 'none';
+            generateBtn.style.display = 'block'; // Убеждаемся, что кнопка генерации видна
             generateBtn.disabled = false; // Re-enable main generate button
             generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             clearTimeout(inactivityTimer); // Stop timer when test is finished
             localStorage.removeItem('satQuizSession'); // Clear session when test is fully completed
-            completedQuestions = []; // **НОВОЕ**: Очищаем массив после сохранения
+            completedQuestions = []; // Очищаем массив после сохранения
+            allGeneratedQuestions = {}; // Очищаем сгенерированные вопросы, чтобы гарантировать новый тест
+            // --- КОНЕЦ НОВОГО БЛОКА ---
         }
 
         // Function to handle saving and exiting the test
