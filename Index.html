@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Генератор вопросов SAT</title>
     <!-- Tailwind CSS CDN -->
-    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -237,7 +237,7 @@
 
     <script type="module">
         // Import the Google Generative AI library
-        import { GoogleGenerativeAI } from '[https://esm.sh/@google/generative-ai](https://esm.sh/@google/generative-ai)';
+        import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
 
         // Initialize Firebase (required for Canvas environment, even if not directly used for auth in this example)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -332,6 +332,7 @@
             
             // Stop any timers
             clearTimeout(inactivityTimer);
+            updateControlButtonsState(false); // Enable buttons
         }
 
         // Function to reset the inactivity timer
@@ -493,11 +494,12 @@
 
         // Login function
         loginBtn.addEventListener('click', async () => { // Made async to await loadSession
-            if (passwordInput.value === CORRECT_PASSWORD) {
+            // **FIXED: Use .trim() to handle leading/trailing whitespace**
+            if (passwordInput.value.trim() === CORRECT_PASSWORD) {
                 loginScreen.style.display = 'none';
                 appContent.style.display = 'block';
                 loginError.style.display = 'none';
-
+                
                 // Check for a saved session
                 const savedSession = localStorage.getItem('satQuizSession');
                 const sessionResumed = savedSession ? await loadSession() : false; // Await the promise only if a session exists
@@ -718,6 +720,7 @@
                 passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline">$1</span>`);
             } else if (categoryTitle === "Standard English Conventions") {
                 // For "Standard English Conventions", the error part is highlighted by **...**
+                // **FIXED: Added the .replace() method call which was missing.**
                 passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline text-red-600">$1</span>`);
             }
 
