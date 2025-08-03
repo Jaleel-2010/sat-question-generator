@@ -40,6 +40,15 @@
             margin-bottom: 1rem;
             line-height: 1.6;
         }
+        .question-image {
+            /* Убедитесь, что изображение адаптивно и не превышает ширину родительского элемента */
+            max-width: 100%;
+            height: auto;
+            margin: 1rem auto;
+            display: block;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
         .question-text {
             font-weight: 600;
             margin-bottom: 0.75rem;
@@ -180,6 +189,9 @@
             padding-left: 1rem;
             margin-top: 1rem;
         }
+        .user-answer {
+            font-weight: 500;
+        }
         .completed-test-details-question-card {
             background-color: #f8fafc;
             border-radius: 0.5rem;
@@ -187,8 +199,15 @@
             margin-bottom: 1rem;
             border: 1px solid #e2e8f0;
         }
-        .user-answer {
-            font-weight: 500;
+        /* Style for SVG graphs */
+        .question-svg {
+            margin: 1rem auto;
+            display: block;
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -269,14 +288,11 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 
-        // ---------------------------------------------------------------------
-        // Исправлено: Используется API-ключ, предоставленный пользователем.
-        // ---------------------------------------------------------------------
-        const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
+        const apiKey = "AIzaSyB6HddnRBVrrWDr_ujKlFx7ZQST1RzvcZs";
         
         // Initialize Google Generative AI
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+        const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
 
         const loginScreen = document.getElementById('loginScreen');
         const passwordInput = document.getElementById('passwordInput');
@@ -554,13 +570,12 @@
             const BASE_DELAY_MS = 1000; // 1 second
 
             let prompt = "";
-            const numberOfQuestions = 4; // We want 4 questions per category
+            const numberOfQuestions = 7; // We want 7 questions per category
 
             const difficultyModifier = difficulty === 'hard' ? 'challenging' : 'straightforward';
             const wordCountRange = difficulty === 'hard' ? '60-80' : '40-60';
             const analyticalSkill = difficulty === 'hard' ? 'deep analytical skills' : 'basic comprehension';
             const grammaticalNuance = difficulty === 'hard' ? 'complex grammatical error' : 'common grammatical error';
-            const rhetoricalEffect = difficulty === 'hard' ? 'advanced rhetorical effect' : 'clear and concise expression';
 
             // Define the JSON schema for the expected output
             const responseSchema = {
@@ -568,7 +583,8 @@
                 items: {
                     type: "OBJECT",
                     properties: {
-                        passage: { type: "STRING" },
+                        passage: { type: "STRING" }, // Now optional for figure-based questions
+                        svg_data: { type: "STRING" }, // New field for SVG data
                         question: { type: "STRING" },
                         options: {
                             type: "ARRAY",
@@ -595,60 +611,87 @@
                                 required: ["word", "translation", "explanation"]
                             }
                         },
-                        category: { type: "STRING" }
+                        category: { type: "STRING" },
+                        question_type: { type: "STRING" } // Added to distinguish question types
                     },
-                    required: ["passage", "question", "options", "correct_answer", "explanation", "category"]
+                    required: ["question_type", "question", "options", "correct_answer", "explanation", "category"]
                 }
             };
             
-            // --- UPDATED: More varied prompts for each category ---
+            // --- UPDATED: More varied prompts for each category, with new SVG instruction ---
             const basePrompt = (passageType, questionType, highlightInstruction = '') => `
                 Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryName}" questions.
                 For each question, provide:
                 1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, drawing from various styles and sources, such as: ${passageType}. The passages should be fresh and not repeat previous topics.
-                2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer.
-                3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
+                2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer. The question and the answer options must be in English.
+                3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                 4. The correct answer label (e.g., "A").
-                5. A brief explanation in Russian for the correct answer.
-                6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
-                7. Include the category name "${categoryName}" in a 'category' field.
+                5. A brief explanation in Russian for the correct answer. **Пожалуйста, убедитесь, что все объяснения на русском языке написаны без грамматических и орфографических ошибок.**
+                6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array. **Убедитесь, что все переводы и объяснения в 'vocabulary' также написаны на правильном русском языке.**
+                7. Include the category name "${categoryName}" in a 'category' field and the question type in a 'question_type' field.
                 ${highlightInstruction}
             `;
 
             switch (categoryKey) {
                 case "information_ideas":
-                    prompt = basePrompt(
-                        'an excerpt from a scientific journal, a historical document, a philosophical text, or an analytical review of an art exhibit', 
-                        'Information and Ideas (e.g., main idea, detail, inference, or data analysis)'
-                    );
+                    // UPDATED PROMPT: Even more explicit instructions for SVG generation and JSON structure
+                    prompt = `Generate ${numberOfQuestions} unique and diverse SAT-style questions for the "Information and Ideas" category. The questions should be a mix of the following types: Direct Questions, Inference Questions, Main Idea Questions, Figure based Questions, Strengthen Weaken Questions, Poem based Questions, and Character Descriptions.
+                    
+                    For each question, provide a JSON object.
+                    
+                    For 'Figure based Questions', **you must provide a complete, well-formed, and valid SVG string in the 'svg_data' field**, and the 'passage' field should be an empty string. The SVG must be a simple bar chart, line graph, or pie chart with clear English labels, a title, and be visually clean. It must not contain any lorem ipsum or garbled text. The SVG must be a single, self-contained XML block that is ready to be injected into an HTML div.
+                    
+                    For all other question types, the 'svg_data' field should be an empty string, and you must provide a short, ${difficultyModifier} passage (${wordCountRange} words) in the 'passage' field.
+                    
+                    For all question types, provide:
+                    1. A SAT-style question based on the passage or figure data that requires ${analyticalSkill} to answer. The question and the answer options must be in English.
+                    2. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
+                    3. The correct answer label (e.g., "A").
+                    4. A brief explanation in Russian for the correct answer. **Пожалуйста, убедитесь, что все объяснения на русском языке написаны без грамматических и орфографических ошибок.**
+                    5. Identify 4-5 English words from the passage or question that would likely be rare or complex for a 9th-grade student. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array. **Убедитесь, что все переводы и объяснения в 'vocabulary' также написаны на правильном русском языке.**
+                    6. Include the category name "Information and Ideas" in a 'category' field and the question type in a 'question_type' field.
+                    The passages should be fresh and not repeat previous topics.`;
                     break;
                 case "craft_structure":
-                    prompt = basePrompt(
-                        'an excerpt from a literary text, a poem, an argumentative essay, or a personal journal entry that uses a specific rhetorical device', 
-                        'Vocabulary in Context or Rhetorical Purpose'
-                    );
-                    // Add specific highlighting instructions
-                    prompt += `\nFor these questions, a specific word or phrase in the passage should be highlighted by enclosing it in double asterisks (e.g., **word**). This highlighted part is the focus of the question.`;
+                    prompt = `Generate ${numberOfQuestions} unique and diverse SAT-style questions for the "Craft and Structure" category. The questions should be a mix of the following types: Vocabulary in Context, Primary Purpose Questions, Purpose of a portion Questions, Structure Questions, Cross-text Connection Questions, and Quotes Illustrate Questions.
+                    For each question, provide:
+                    1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic. For Cross-text questions, provide two short passages. For other questions, use one passage. The passages should be fresh and not repeat previous topics.
+                    2. A SAT-style question based on the passage(s) that requires ${analyticalSkill} to answer, matching one of the requested types. The question and the answer options must be in English.
+                    3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
+                    4. The correct answer label (e.g., "A").
+                    5. A brief explanation in Russian for the correct answer. **Пожалуйста, убедитесь, что все объяснения на русском языке написаны без грамматических и орфографических ошибок.**
+                    6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array. **Убедитесь, что все переводы и объяснения в 'vocabulary' также написаны на правильном русском языке.**
+                    7. Include the category name "Craft and Structure" in a 'category' field and the question type in a 'question_type' field.`;
                     break;
                 case "expression_ideas":
-                    prompt = basePrompt(
-                        'a draft of a student\'s essay, a policy proposal, or a research paper that needs revision for logic, style, or argument', 
-                        'Expression of Ideas (e.g., best revision, addition, or transition to improve ${rhetoricalEffect})'
-                    );
+                    prompt = `Generate ${numberOfQuestions} unique and diverse SAT-style questions for the "Expression of Ideas" category. The questions should be a mix of the following types: Transition Questions and Goal-based Questions.
+                    For each question, provide:
+                    1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a student's draft essay or a proposal that needs to be revised for logic and flow. The passages should be fresh and not repeat previous topics.
+                    2. A SAT-style question based on the passage, matching one of the requested types. The question and the answer options must be in English. For Transition Questions, the question should ask which sentence or phrase best connects two ideas. For Goal-based Questions, the question should ask which change best achieves a stated goal (e.g., "The author wants to add a sentence to emphasize a point. Which of the following sentences would best achieve this goal?").
+                    3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
+                    4. The correct answer label (e.g., "A").
+                    5. A brief explanation in Russian for the correct answer. **Пожалуйста, убедитесь, что все объяснения на русском языке написаны без грамматических и орфографических ошибок.**
+                    6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array. **Убедитесь, что все переводы и объяснения в 'vocabulary' также написаны на правильном русском языке.**
+                    7. Include the category name "Expression of Ideas" in a 'category' field and the question type in a 'question_type' field.`;
                     break;
                 case "standard_english_conventions":
-                    prompt = basePrompt(
-                        'a paragraph from a historical account, a technical manual, or a biographical sketch that contains a specific grammatical error (e.g., subject-verb agreement, pronoun use, punctuation)', 
-                        'Standard English Conventions (asking to correct a ${grammaticalNuance})'
-                    );
-                    // Add specific highlighting instructions
-                    prompt += `\nFor these questions, the part of the passage with the grammatical error should be highlighted by enclosing it in double asterisks (e.g., **phrase with error**).`;
+                    // UPDATED PROMPT based on user's new list of topics
+                    prompt = `Generate ${numberOfQuestions} unique and diverse SAT-style questions for the "Standard English Conventions" category. The questions should be a mix of the following types: Subject-verb agreement, Subject-pronoun agreement, Punctuation (including the comma subject rule, commas in lists, and introductions to lists), Apostrophe usage, Comparison rules, and Verb tense.
+                    For each question, provide:
+                    1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a historical account, a technical manual, or a biographical sketch. The passages should be fresh and not repeat previous topics.
+                    2. A SAT-style question based on the passage, matching one of the requested types. The question and the answer options must be in English.
+                    3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
+                    4. The correct answer label (e.g., "A").
+                    5. A brief explanation in Russian for the correct answer. **Пожалуйста, убедитесь, что все объяснения на русском языке написаны без грамматических и орфографических ошибок.**
+                    6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array. **Убедитесь, что все переводы и объяснения в 'vocabulary' также написаны на правильном русском языке.**
+                    7. Include the category name "Standard English Conventions" in a 'category' field and the question type in a 'question_type' field.
+                    The part of the passage with the grammatical or punctuation error should be highlighted by enclosing it in double asterisks (e.g., **phrase with error**).`;
                     break;
             }
 
             try {
                 // Use generationConfig to enforce JSON schema
-                const result = await model.generateContent({
+                const result = await textModel.generateContent({
                     contents: [{ role: "user", parts: [{ text: prompt }] }],
                     generationConfig: {
                         responseMimeType: "application/json",
@@ -657,12 +700,19 @@
                 });
                 
                 // The response should now be directly parsable JSON
-                const questionsArray = JSON.parse(result.response.text());
+                let questionsArray = JSON.parse(result.response.text());
                 
                 // Ensure the response is indeed an array
                 if (!Array.isArray(questionsArray)) {
                     throw new Error("API did not return a JSON array of questions.");
                 }
+                
+                // --- NEW LOGIC: Enforce the number of questions to be exactly 7 for Category 1 ---
+                if (categoryKey === "information_ideas" && questionsArray.length !== numberOfQuestions) {
+                    console.warn(`Category "${categoryName}" generated ${questionsArray.length} questions, but expected ${numberOfQuestions}. Trimming to the first ${numberOfQuestions}.`);
+                    questionsArray = questionsArray.slice(0, numberOfQuestions);
+                }
+
                 return questionsArray; // Return the array of questions
             } catch (error) {
                 console.error(`Error generating questions for ${categoryName} (Difficulty: ${difficulty}):`, error);
@@ -699,6 +749,24 @@
             const questionCard = document.createElement('div');
             questionCard.className = isReview ? 'completed-test-details-question-card' : 'question-card';
 
+            // Check if it's a figure-based question and display the SVG if it exists
+            if (questionData.question_type === 'Figure based Questions' && questionData.svg_data) {
+                const svgContainer = document.createElement('div');
+                svgContainer.className = 'question-svg';
+                
+                // --- NEW LOGIC: Use a try-catch block for SVG injection ---
+                try {
+                    svgContainer.innerHTML = questionData.svg_data; // Inject the SVG code
+                    questionCard.appendChild(svgContainer);
+                } catch (svgError) {
+                    console.error("Error injecting SVG data:", svgError);
+                    const errorMsg = document.createElement('p');
+                    errorMsg.className = 'text-red-500 font-semibold text-center mt-4';
+                    errorMsg.textContent = 'Не удалось отобразить график.';
+                    questionCard.appendChild(errorMsg);
+                }
+            }
+
             let passageContent = questionData.passage;
 
             // First, add tooltips for vocabulary words
@@ -709,23 +777,29 @@
                     const escapedWord = vocabItem.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     const regex = new RegExp(`\\b${escapedWord}\\b`, 'gi'); 
                     // Use a replacement function to preserve the original casing of the matched word
-                    passageContent = passageContent.replace(regex, (matchedWord) => {
-                        // Capitalize the first letter and make it bold for the tooltip display
-                        const formattedWordInTooltip = `<strong>${matchedWord.charAt(0).toUpperCase() + matchedWord.slice(1)}</strong>`;
-                        return `<span class="tooltip-container">${matchedWord}<span class="tooltip-text">${formattedWordInTooltip}: ${vocabItem.translation}: ${vocabItem.explanation}</span></span>`;
-                    });
+                    if (passageContent) { // Check if passage exists before replacing
+                        passageContent = passageContent.replace(regex, (matchedWord) => {
+                            // Capitalize the first letter and make it bold for the tooltip display
+                            const formattedWordInTooltip = `<strong>${matchedWord.charAt(0).toUpperCase() + matchedWord.slice(1)}</strong>`;
+                            return `<span class="tooltip-container">${matchedWord}<span class="tooltip-text">${formattedWordInTooltip}: ${vocabItem.translation}: ${vocabItem.explanation}</span></span>`;
+                        });
+                    }
                 });
             }
 
             // Then, apply highlighting for Craft and Structure / Standard English Conventions
-            if (categoryTitle === "Craft and Structure" || categoryTitle === "Standard English Conventions") {
+            if (passageContent && (categoryTitle === "Craft and Structure" || categoryTitle === "Standard English Conventions")) {
                 // For these categories, the model is instructed to use **...** for the highlighted part.
                 passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline">$1</span>`);
             }
             
-            const passageDiv = document.createElement('div');
-            passageDiv.className = 'question-passage';
-            passageDiv.innerHTML = passageContent; // Use innerHTML to render bold/underline/tooltips
+            // Display the passage only if it exists
+            if (passageContent) {
+                const passageDiv = document.createElement('div');
+                passageDiv.className = 'question-passage';
+                passageDiv.innerHTML = passageContent; // Use innerHTML to render bold/underline/tooltips
+                questionCard.appendChild(passageDiv);
+            }
 
             const questionTextDiv = document.createElement('div');
             questionTextDiv.className = 'question-text';
@@ -822,7 +896,6 @@
                 optionsList.appendChild(optionItem);
             });
 
-            questionCard.appendChild(passageDiv);
             questionCard.appendChild(questionTextDiv);
             questionCard.appendChild(optionsList);
             questionCard.appendChild(explanationDiv); // Append explanation after options
@@ -898,7 +971,6 @@
             const generationPromises = categoriesArray.map(async (categoryTitle) => {
                 const categoryKey = categories[categoryTitle];
                 const selectedDifficulty = difficultySelect.value;
-                // The generateQuestionsForCategory function already handles retries and returns null on failure
                 return generateQuestionsForCategory(categoryTitle, categoryKey, selectedDifficulty);
             });
 
@@ -933,8 +1005,6 @@
                         displayCurrentQuestion(); // Display the first question
                         resetInactivityTimer(); // Reset timer after generation
                     } else {
-                         // This case would be hit if some generations failed, but the first one was successful,
-                         // but we handle all failures in the forEach loop above and set allSuccessful to false.
                          nextBtn.style.display = 'none';
                          saveAndExitBtn.style.display = 'none';
                     }
@@ -945,8 +1015,6 @@
                 }
 
             } catch (error) {
-                // This catch block will only be triggered if Promise.all rejects,
-                // which means at least one of the promises failed catastrophically.
                 console.error("An error occurred during parallel question generation:", error);
                 loadingIndicator.innerHTML = `<p class='text-red-600'>Произошла общая ошибка при генерации вопросов. Пожалуйста, попробуйте еще раз.</p>`;
                 hideLoading();
