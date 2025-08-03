@@ -689,13 +689,13 @@
             
             switch (categoryKey) {
                 case "information_ideas":
-                    // UPDATED PROMPT: Specific question types for this category
+                    // UPDATED PROMPT: Questions and options must be in English
                     prompt = `
-                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions, covering a wide range of analytical skills.
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, covering a wide range of analytical skills.
                         For each question, provide:
                         1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic. Passages should be fresh and not repeat previous topics.
-                        2. A specific SAT-style question based on the passage, designed to test a particular skill.
-                        3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
+                        2. A specific SAT-style question in English based on the passage, designed to test a particular skill.
+                        3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
                         6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
@@ -712,13 +712,13 @@
                     `;
                     break;
                 case "craft_structure":
-                    // UPDATED PROMPT: Requesting the specific types of questions for this category
+                    // UPDATED PROMPT: Questions and options must be in English
                     prompt = `
-                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions.
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English.
                         For each question, provide:
                         1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic. For Cross-text Connection questions, provide two distinct, short passages. The passages should be fresh and not repeat previous topics.
-                        2. A specific SAT-style question based on the passage(s).
-                        3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
+                        2. A specific SAT-style question in English based on the passage(s).
+                        3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
                         6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
@@ -737,14 +737,15 @@
                     `;
                     break;
                 case "expression_ideas":
+                    // UPDATED PROMPT: Questions and options must be in English
                     prompt = `
-                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions.
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English.
                         For each question, provide:
                         1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a student's essay draft or a research proposal. The passages should be fresh and not repeat previous topics.
-                        2. A specific SAT-style question based on the passage. The questions must consist of:
+                        2. A specific SAT-style question in English based on the passage. The questions must consist of:
                            - **3-4 Transition Questions**: Asks for the most logical transition to connect a paragraph to a previous one or to a specific sentence within the paragraph. The part of the passage that requires a transition should be highlighted by enclosing it in double asterisks (e.g., **The phrase to be revised**).
                            - **3-4 Goal-based Questions**: Asks which revision of a sentence best achieves a specified goal, such as making a point more precise or establishing a clearer tone.
-                        3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
+                        3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
                         6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
@@ -754,11 +755,11 @@
                     `;
                     break;
                 case "standard_english_conventions":
-                    // UPDATED PROMPT: Requesting a variety of question types for grammar and punctuation
+                    // UPDATED PROMPT: Questions and options must be in English
                     prompt = `
-                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions. For each question, provide:
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English. For each question, provide:
                         1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a historical account, a technical manual, or a biographical sketch. Each passage must contain a specific grammatical or punctuation error. The passages should be fresh and not repeat previous topics.
-                        2. A SAT-style question that asks the user to correct the error. The questions must cover a variety of the following rules:
+                        2. A SAT-style question in English that asks the user to correct the error. The questions must cover a variety of the following rules:
                            - Subject-verb agreement
                            - Subject pronoun agreement
                            - Comma subject rule
@@ -768,7 +769,7 @@
                            - Introduction of a list or description
                            - Comparison
                            - Tense
-                        3. Four answer choices (A, B, C, D), one correct and three plausible distractors. One of the options must always be "NO CHANGE".
+                        3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors. One of the options must always be "NO CHANGE".
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
                         6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
@@ -1153,6 +1154,41 @@
                 });
             }
             const averageTime = completedQuestions.length > 0 ? totalTime / completedQuestions.length : 0;
+            const totalQuestions = completedQuestions.length;
+            const scorePercentage = totalQuestions > 0 ? (correctCount / totalQuestions) * 100 : 0;
+            const averageTimeThreshold = 60; // 60 seconds is a reasonable average for the test
+            const scoreThreshold = 75; // 75% is a good score
+
+            let feedbackMessage = '';
+            if (timedOut) {
+                feedbackMessage = `
+                    <p class="text-xl font-bold mt-4 text-red-600">Время истекло!</p>
+                    <p class="text-gray-700 mt-2">К сожалению, вы не успели завершить тест вовремя. Сосредоточьтесь на управлении временем и постарайтесь не задерживаться на одном вопросе слишком долго.</p>
+                `;
+            } else if (isFullTest) {
+                if (scorePercentage >= scoreThreshold && averageTime <= averageTimeThreshold) {
+                    feedbackMessage = `
+                        <p class="text-xl font-bold mt-4 text-green-600">Отличный результат!</p>
+                        <p class="text-gray-700 mt-2">Вы не только хорошо знаете материал, но и эффективно управляете временем. Продолжайте в том же духе, чтобы добиться максимальных результатов!</p>
+                    `;
+                } else if (scorePercentage >= scoreThreshold && averageTime > averageTimeThreshold) {
+                    feedbackMessage = `
+                        <p class="text-xl font-bold mt-4 text-yellow-600">Хороший результат!</p>
+                        <p class="text-gray-700 mt-2">Вы показали прекрасные знания, но скорость ответа можно улучшить. Попробуйте сосредоточиться на более быстром чтении и анализе вопросов, чтобы уложиться в лимит времени.</p>
+                    `;
+                } else if (scorePercentage < scoreThreshold && averageTime <= averageTimeThreshold) {
+                    feedbackMessage = `
+                        <p class="text-xl font-bold mt-4 text-orange-600">Вам есть куда расти!</p>
+                        <p class="text-gray-700 mt-2">Вы хорошо укладываетесь в лимит времени, но похоже, что некоторые темы требуют повторения. Потратьте больше времени на изучение разделов, где вы допустили ошибки.</p>
+                    `;
+                } else { // Low score and high time
+                    feedbackMessage = `
+                        <p class="text-xl font-bold mt-4 text-red-600">Требуется больше практики.</p>
+                        <p class="text-gray-700 mt-2">Похоже, вам нужно уделить внимание как знанию материала, так и скорости ответа. Рекомендуется вернуться к базовым концепциям и больше практиковаться, стараясь отвечать быстрее.</p>
+                    `;
+                }
+            }
+
 
             const newCompletedTest = {
                 timestamp: new Date().toISOString(),
@@ -1176,16 +1212,17 @@
             categoriesArray = [];
 
             let completionMessage = `<p class="text-center text-gray-600 text-lg">Тест завершен. Нажмите на кнопку категории, чтобы начать новый тест.</p>`;
-            if (timedOut) {
-                completionMessage = `<p class="text-center text-red-600 text-lg font-semibold">Время истекло! Тест был завершен. Ваш прогресс сохранен.</p>`;
-            }
-
-            // Display score in the completion message if it's a full test
+            
+            // Display score and feedback for full tests
             if (newCompletedTest.isFullTest) {
-                const totalQuestions = newCompletedTest.questions.length;
-                completionMessage += `<p class="text-center text-xl font-bold mt-4">Ваш результат: ${newCompletedTest.score} из ${totalQuestions} правильных ответов.</p>`;
+                completionMessage = `
+                    <p class="text-center text-xl font-bold mt-4">Ваш результат: ${newCompletedTest.score} из ${totalQuestions} правильных ответов.</p>
+                    <p class="text-center text-lg font-medium mt-2">Среднее время на вопрос: ${newCompletedTest.averageTime.toFixed(2)} сек.</p>
+                    <div class="mt-8 p-4 bg-white rounded-lg shadow-md border border-gray-200">
+                        ${feedbackMessage}
+                    </div>
+                `;
             }
-
 
             questionsContainer.innerHTML = completionMessage;
             
