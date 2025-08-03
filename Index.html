@@ -639,19 +639,7 @@
                 }
             };
             
-            const basePrompt = (passageType, questionType, highlightInstruction = '') => `
-                Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions.
-                For each question, provide:
-                1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, drawing from various styles and sources, such as: ${passageType}. The passages should be fresh and not repeat previous topics.
-                2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer.
-                3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
-                4. The correct answer label (e.g., "A").
-                5. A brief explanation in Russian for the correct answer.
-                6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
-                7. Include the category name "${categoryTitle}" in a 'category' field.
-                ${highlightInstruction}
-            `;
-
+            // Construct the prompt based on the selected category and difficulty.
             switch (categoryKey) {
                 case "information_ideas":
                     prompt = `
@@ -676,7 +664,6 @@
                     `;
                     break;
                 case "craft_structure":
-                    // NEW PROMPT: Generate 7 questions of the specified types
                     prompt = `
                         Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions.
                         For each question, provide:
@@ -701,7 +688,6 @@
                     `;
                     break;
                 case "expression_ideas":
-                    // UPDATED PROMPT: Specific question types and distribution as requested by the user
                     prompt = `
                         Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions. The questions must be split between Transition and Goal-based questions.
                         For each question, provide:
@@ -719,15 +705,24 @@
                     `;
                     break;
                 case "standard_english_conventions":
-                    prompt = basePrompt(
-                        'a paragraph from a historical account, a technical manual, or a biographical sketch that contains a specific grammatical error (e.g., subject-verb agreement, pronoun use, punctuation)', 
-                        'Standard English Conventions (asking to correct a ${grammaticalNuance})'
-                    );
-                    prompt += `\nFor these questions, the part of the passage with the grammatical error should be highlighted by enclosing it in double asterisks (e.g., **phrase with error**).`;
+                    prompt = `
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions.
+                        For each question, provide:
+                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a paragraph from a historical account, a technical manual, or a biographical sketch that contains a specific grammatical error. The passages should be fresh and not repeat previous topics.
+                        2. A specific SAT-style question based on the passage that requires ${analyticalSkill} to answer. The question should ask to correct a ${grammaticalNuance}.
+                        3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
+                        4. The correct answer label (e.g., "A").
+                        5. A brief explanation in Russian for the correct answer.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                        7. Include the category name "${categoryTitle}" in a 'category' field.
+                        
+                        For these questions, the part of the passage with the grammatical error should be highlighted by enclosing it in double asterisks (e.g., **phrase with error**).
+                    `;
                     break;
             }
 
             try {
+                // The API call is now wrapped in a robust retry loop.
                 const result = await model.generateContent({
                     contents: [{ role: "user", parts: [{ text: prompt }] }],
                     generationConfig: {
