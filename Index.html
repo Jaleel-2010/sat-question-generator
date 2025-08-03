@@ -676,11 +676,29 @@
                     `;
                     break;
                 case "craft_structure":
-                    prompt = basePrompt(
-                        'an excerpt from a literary text, a poem, an argumentative essay, or a personal journal entry that uses a specific rhetorical device', 
-                        'Vocabulary in Context or Rhetorical Purpose'
-                    );
-                    prompt += `\nFor these questions, a specific word or phrase in the passage should be highlighted by enclosing it in double asterisks (e.g., **word**). This highlighted part is the focus of the question.`;
+                    // NEW PROMPT: Generate 7 questions of the specified types
+                    prompt = `
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions.
+                        For each question, provide:
+                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic. For Cross-text Connection questions, provide two distinct, short passages. The passages should be fresh and not repeat previous topics.
+                        2. A specific SAT-style question based on the passage(s).
+                        3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
+                        4. The correct answer label (e.g., "A").
+                        5. A brief explanation in Russian for the correct answer.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                        7. Include the category name "${categoryTitle}" in a 'category' field.
+
+                        The 7 questions should be of the following types, ensuring a good mix across the list:
+                        - Vocabulary in Context
+                        - Primary Purpose Questions
+                        - Purpose of a portion Questions
+                        - Structure Questions
+                        - Cross-text Connection Questions (must include two passages)
+                        - Quotes Illustrate Questions
+                        - A seventh question which is a duplicate of one of the above types.
+                        
+                        For "Vocabulary in Context" and "Purpose of a portion" questions, highlight the specific word, phrase, or sentence in the passage by enclosing it in double asterisks (e.g., **word**).
+                    `;
                     break;
                 case "expression_ideas":
                     prompt = basePrompt(
