@@ -288,7 +288,7 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 
-        const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
+        const apiKey = "";
         
         // Initialize Google Generative AI
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -672,7 +672,7 @@
                         - Question 4 (Figure based Question): Based on a bar chart, line graph, or pie chart. The passage field should provide context for the data, and a new "graphic" field must contain a **complete and self-contained SVG string** for the chart. **Ensure the SVG is compact, and all text labels (titles, axes, data labels) are legible, do not overlap, are contained within the SVG's viewBox, and use the 'Inter, sans-serif' font family with a font-size of 12px to match the application's styling.** The SVG must be responsive, and all graphic components (bars, lines, slices) must use a color palette that excludes pure white and black.
                         - Question 5 (Strengthen Weaken Question): Based on a short argumentative essay.
                         - Question 6 (Poem based Question): Based on a short poem.
-                        - Question 7 (Character Descriptions): Based on an excerpt from a novel or a short story.
+                        - Question 7 (Character Descriptions): Based on an an excerpt from a novel or a short story.
                     `;
                     break;
                 case "craft_structure":
@@ -701,10 +701,22 @@
                     `;
                     break;
                 case "expression_ideas":
-                    prompt = basePrompt(
-                        'a draft of a student\'s essay, a policy proposal, or a research paper that needs revision for logic, style, or argument', 
-                        'Expression of Ideas (e.g., best revision, addition, or transition to improve ${rhetoricalEffect})'
-                    );
+                    // UPDATED PROMPT: Specific question types and distribution as requested by the user
+                    prompt = `
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions. The questions must be split between Transition and Goal-based questions.
+                        For each question, provide:
+                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a student's essay draft or a research proposal. The passages should be fresh and not repeat previous topics.
+                        2. A specific SAT-style question based on the passage. The questions must consist of:
+                           - **3-4 Transition Questions**: Asks for the most logical transition to connect a paragraph to a previous one or to a specific sentence within the paragraph.
+                           - **3-4 Goal-based Questions**: Asks which revision of a sentence best achieves a specified goal, such as making a point more precise or establishing a clearer tone.
+                        3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
+                        4. The correct answer label (e.g., "A").
+                        5. A brief explanation in Russian for the correct answer.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                        7. Include the category name "${categoryTitle}" in a 'category' field.
+                        
+                        For "Transition Questions" and "Goal-based Questions", highlight the relevant part of the passage that needs revision by enclosing it in double asterisks (e.g., **The phrase to be revised**).
+                    `;
                     break;
                 case "standard_english_conventions":
                     prompt = basePrompt(
@@ -786,8 +798,8 @@
                 });
             }
 
-            // Then, apply highlighting for Craft and Structure / Standard English Conventions
-            if (categoryTitle === "Craft and Structure" || categoryTitle === "Standard English Conventions") {
+            // Then, apply highlighting for Expression of Ideas, Craft and Structure, and Standard English Conventions
+            if (categoryTitle === "Expression of Ideas" || categoryTitle === "Craft and Structure" || categoryTitle === "Standard English Conventions") {
                 passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline">$1</span>`);
             }
             
