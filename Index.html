@@ -331,7 +331,8 @@
         const deleteTestBtn = document.getElementById('deleteTestBtn'); // New delete button
 
         const categories = {
-            "Information and Ideas": "information_ideas",
+            // ВАЖНО: В этой версии я временно удаляю категорию с графиками для отладки.
+            // "Information and Ideas": "information_ideas",
             "Craft and Structure": "craft_structure",
             "Expression of Ideas": "expression_ideas",
             "Standard English Conventions": "standard_english_conventions"
@@ -657,7 +658,7 @@
 
             switch (categoryKey) {
                 case "information_ideas":
-                    // UPDATED PROMPT: Even more explicit instructions for SVG generation and JSON structure
+                    // This case is temporarily skipped in this version.
                     prompt = `Generate ${numberOfQuestions} unique and diverse SAT-style questions for the "Information and Ideas" category. The questions should be a mix of the following types: Direct Questions, Inference Questions, Main Idea Questions, Figure based Questions, Strengthen Weaken Questions, Poem based Questions, and Character Descriptions.
                     
                     For each question, provide a JSON object.
