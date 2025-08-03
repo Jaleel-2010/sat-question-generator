@@ -264,6 +264,7 @@
             <!-- Questions will be loaded here -->
         </div>
 
+        <!-- Corrected button order -->
         <div class="flex flex-col sm:flex-row justify-between gap-4 mt-4">
             <button id="nextBtn" class="w-full sm:w-1/2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75" style="display: none;">
                 Следующий вопрос
@@ -305,7 +306,7 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 
-        const apiKey = "API AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs"; // Canvas will automatically provide the API key
+        const apiKey = "API AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
         
         // Initialize Google Generative AI
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -373,6 +374,28 @@
         const FULL_TEST_DURATION_MINUTES = 30; 
         const FULL_TEST_DURATION_SECONDS = FULL_TEST_DURATION_MINUTES * 60;
         let timeLeft = FULL_TEST_DURATION_SECONDS;
+        
+        // --- NEW: Function to robustly parse the API response to handle non-JSON text ---
+        function parseApiResponse(text) {
+            try {
+                // Try to find the JSON array part of the string.
+                // This regex looks for the content between the first '[' and the last ']'.
+                const jsonMatch = text.match(/\[[\s\S]*\]/);
+                if (jsonMatch) {
+                    return JSON.parse(jsonMatch[0]);
+                } else {
+                    // If no array is found, it might be a single JSON object.
+                    const objectMatch = text.match(/\{[\s\S]*\}/);
+                    if (objectMatch) {
+                        return JSON.parse(objectMatch[0]);
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to parse JSON even after cleaning:", e);
+                throw new Error("Invalid JSON format from API.");
+            }
+            throw new Error("No valid JSON found in API response.");
+        }
 
         // Function to reset the inactivity timer
         function resetInactivityTimer() {
@@ -654,12 +677,10 @@
             
             const difficultyModifier = difficulty === 'hard' ? 'challenging' : 'straightforward';
             const wordCountRange = difficulty === 'hard' ? '60-80' : '40-60';
-            const analyticalSkill = difficulty === 'hard' ? 'deep analytical skills' : 'basic comprehension';
-            const rhetoricalEffect = difficulty === 'hard' ? 'advanced rhetorical effect' : 'clear and concise expression';
             
             // NEW: Add excluded topics to the prompt
             const excludeText = excludedTopics && excludedTopics.length > 0 ? `Explicitly avoid passages and questions on the following topics: ${excludedTopics.join(', ')}.` : '';
-
+            
             // Define the JSON schema for the expected output
             const responseSchema = {
                 type: "ARRAY",
@@ -802,7 +823,8 @@
                     }
                 });
                 
-                const questionsArray = JSON.parse(result.response.text());
+                // Use the new robust parsing function
+                const questionsArray = parseApiResponse(result.response.text());
                 
                 if (!Array.isArray(questionsArray)) {
                     throw new Error("API did not return a JSON array of questions.");
