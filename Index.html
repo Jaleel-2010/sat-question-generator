@@ -40,15 +40,6 @@
             margin-bottom: 1rem;
             line-height: 1.6;
         }
-        .question-image {
-            /* Убедитесь, что изображение адаптивно и не превышает ширину родительского элемента */
-            max-width: 100%;
-            height: auto;
-            margin: 1rem auto;
-            display: block;
-            border-radius: 0.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
         .question-text {
             font-weight: 600;
             margin-bottom: 0.75rem;
@@ -189,9 +180,6 @@
             padding-left: 1rem;
             margin-top: 1rem;
         }
-        .user-answer {
-            font-weight: 500;
-        }
         .completed-test-details-question-card {
             background-color: #f8fafc;
             border-radius: 0.5rem;
@@ -199,15 +187,18 @@
             margin-bottom: 1rem;
             border: 1px solid #e2e8f0;
         }
-        /* Style for SVG graphs */
-        .question-svg {
-            margin: 1rem auto;
-            display: block;
-            max-width: 100%;
+        .user-answer {
+            font-weight: 500;
+        }
+        /* Style for SVG container to ensure responsiveness */
+        .svg-container {
+            width: 100%;
             height: auto;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background-color: #ffffff;
             border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 0.75rem;
         }
     </style>
 </head>
@@ -230,11 +221,12 @@
             </select>
         </div>
 
+        <div id="categoryButtonsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <!-- Buttons for each category will be inserted here by JavaScript -->
+        </div>
+
         <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
-            <button id="generateBtn" class="w-full sm:w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75">
-                Сгенерировать вопросы
-            </button>
-            <button id="showCompletedTestsBtn" class="w-full sm:w-1/2 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75" disabled>
+            <button id="showCompletedTestsBtn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75" disabled>
                 Завершенные тесты
             </button>
         </div>
@@ -288,51 +280,35 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 
-        // --- ВАЖНО: Проверьте свой API-ключ! ---
-        // Если вы разворачиваете это приложение на Netlify или другом хостинге,
-        // убедитесь, что этот ключ действителен и имеет соответствующие разрешения.
-        // В среде Canvas этот ключ автоматически подставляется.
-        const apiKey = "AIzaSyB6HddnRBVrrWDr_ujKlFx7ZQST1RzvcZs";
-        
-        // --- NEW: Add a check for the API key ---
-        if (!apiKey || apiKey === "YOUR_API_KEY") {
-            document.addEventListener('DOMContentLoaded', () => {
-                document.getElementById('loadingIndicator').innerHTML = "<p class='text-red-600 text-lg font-bold'>Ошибка: API-ключ Gemini не установлен или недействителен. Пожалуйста, проверьте и обновите ваш ключ в файле `script.js`.</p>";
-                document.getElementById('loadingIndicator').style.display = 'block';
-                document.getElementById('generateBtn').disabled = true;
-                document.getElementById('generateBtn').classList.add('opacity-50', 'cursor-not-allowed');
-                console.error("Gemini API key is not set or invalid.");
-            });
-        }
+        const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
         
         // Initialize Google Generative AI
         const genAI = new GoogleGenerativeAI(apiKey);
-        const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-preview-05-20" });
 
         const loginScreen = document.getElementById('loginScreen');
         const passwordInput = document.getElementById('passwordInput');
         const loginBtn = document.getElementById('loginBtn');
         const loginError = document.getElementById('loginError');
         const appContent = document.getElementById('appContent');
+        const categoryButtonsContainer = document.getElementById('categoryButtonsContainer');
 
         const questionsContainer = document.getElementById('questionsContainer');
-        const generateBtn = document.getElementById('generateBtn');
         const showCompletedTestsBtn = document.getElementById('showCompletedTestsBtn');
         const completedTestsScreen = document.getElementById('completedTestsScreen');
         const testsListContainer = document.getElementById('testsListContainer');
         const completedTestDetailsContainer = document.getElementById('completedTestDetailsContainer');
         const testReviewContainer = document.getElementById('testReviewContainer');
         const backToTestsBtn = document.getElementById('backToTestsBtn');
-        const backToMainBtn = document.getElementById('backToMainBtn'); // New button
+        const backToMainBtn = document.getElementById('backToMainBtn');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const difficultySelect = document.getElementById('difficultySelect');
         const nextBtn = document.getElementById('nextBtn');
         const saveAndExitBtn = document.getElementById('saveAndExitBtn');
-        const deleteTestBtn = document.getElementById('deleteTestBtn'); // New delete button
+        const deleteTestBtn = document.getElementById('deleteTestBtn');
 
         const categories = {
-            // ВАЖНО: В этой версии я временно удаляю категорию с графиками для отладки.
-            // "Information and Ideas": "information_ideas",
+            "Information and Ideas": "information_ideas",
             "Craft and Structure": "craft_structure",
             "Expression of Ideas": "expression_ideas",
             "Standard English Conventions": "standard_english_conventions"
@@ -340,20 +316,19 @@
         const romanNumerals = ['I', 'II', 'III', 'IV'];
 
         // Global state to manage questions and current position
-        let allGeneratedQuestions = {}; // Stores questions by category (e.g., { 'information_ideas': [q1, q2, q3, q4] })
-        let completedQuestions = []; // Массив для хранения всех вопросов с ответами пользователя
-        let categoriesArray = Object.keys(categories); // Array of category titles for ordered access
+        let allGeneratedQuestions = {};
+        let completedQuestions = [];
+        let categoriesArray = [];
         let currentCategoryIndex = 0;
         let currentQuestionIndex = 0;
-        let isSessionActive = false; // New state variable to track active session
-        let currentReviewingTest = null; // New state variable to store the test currently being reviewed
+        let isSessionActive = false;
+        let currentReviewingTest = null;
 
         // Hardcoded password for client-side authentication
         const CORRECT_PASSWORD = "Jaleel2010";
 
         // Inactivity timer variables
         let inactivityTimer;
-        // Inactivity timeout is now 5 minutes (5 * 60 * 1000 milliseconds)
         const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
         
         // Countdown timer variables
@@ -368,13 +343,14 @@
 
         // Function to save the current session state
         function saveSession() {
-            if (Object.keys(allGeneratedQuestions).length > 0) { // Only save if questions have been generated
+            if (Object.keys(allGeneratedQuestions).length > 0) {
                 const sessionData = {
                     categoryIndex: currentCategoryIndex,
                     questionIndex: currentQuestionIndex,
                     questions: allGeneratedQuestions,
                     difficulty: difficultySelect.value,
-                    completedQuestions: completedQuestions // Сохраняем уже отвеченные вопросы
+                    completedQuestions: completedQuestions,
+                    categoriesArray: categoriesArray // Save the active categories
                 };
                 localStorage.setItem('satQuizSession', JSON.stringify(sessionData));
                 console.log('Session saved.');
@@ -394,21 +370,22 @@
                             currentCategoryIndex = sessionData.categoryIndex;
                             currentQuestionIndex = sessionData.questionIndex;
                             allGeneratedQuestions = sessionData.questions;
-                            difficultySelect.value = sessionData.difficulty; // Set difficulty to saved one
-                            completedQuestions = sessionData.completedQuestions || []; // Загружаем отвеченные вопросы
-                            isSessionActive = true; // Set session active
+                            difficultySelect.value = sessionData.difficulty;
+                            completedQuestions = sessionData.completedQuestions || [];
+                            categoriesArray = sessionData.categoriesArray || Object.keys(categories);
+                            isSessionActive = true;
                             console.log('Session loaded. Resuming test.');
-                            resolve(true); // Session resumed
+                            resolve(true);
                         } else {
-                            localStorage.removeItem('satQuizSession'); // Clear if user doesn't want to resume
-                            isSessionActive = false; // No session active
+                            localStorage.removeItem('satQuizSession');
+                            isSessionActive = false;
                             console.log('Saved session discarded.');
-                            resolve(false); // Session not resumed
+                            resolve(false);
                         }
                     });
                 });
             }
-            return Promise.resolve(false); // No session found, resolve with false
+            return Promise.resolve(false);
         }
 
         // Custom confirmation dialog (replaces alert/confirm)
@@ -452,11 +429,11 @@
         }
 
         // Function to log out the user and reset the app state
-        function logoutUser(saveCurrent = true) { // Added parameter to control saving
+        function logoutUser(saveCurrent = true) {
             if (saveCurrent) {
-                saveSession(); // Save session before logging out
+                saveSession();
             } else {
-                localStorage.removeItem('satQuizSession'); // Clear session if not saving
+                localStorage.removeItem('satQuizSession');
             }
             
             isSessionActive = false;
@@ -465,28 +442,34 @@
             // Hide app content and show login screen
             appContent.style.display = 'none';
             loginScreen.style.display = 'block';
-            passwordInput.value = ''; // Clear password field
-            loginError.style.display = 'none'; // Hide any login error message
+            passwordInput.value = '';
+            loginError.style.display = 'none';
 
-            // Reset application state (only if not saving or after saving)
+            // Reset application state
             allGeneratedQuestions = {};
-            completedQuestions = []; // Reset completed questions
+            completedQuestions = [];
             currentCategoryIndex = 0;
             currentQuestionIndex = 0;
             currentReviewingTest = null;
+            categoriesArray = [];
 
             // Hide all buttons that appear after login/generation
             nextBtn.style.display = 'none';
             saveAndExitBtn.style.display = 'none';
-            generateBtn.disabled = false;
-            generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            questionsContainer.innerHTML = ''; // Clear questions display
-            loadingIndicator.style.display = 'none'; // Ensure loading indicator is hidden
-            loadingIndicator.innerHTML = ''; // Clear loading message
+            questionsContainer.innerHTML = '';
+            loadingIndicator.style.display = 'none';
+            loadingIndicator.innerHTML = '';
 
             // Stop any existing inactivity timer and countdown timer
             clearTimeout(inactivityTimer);
             clearInterval(countdownInterval);
+
+            // Re-enable all category buttons
+            document.querySelectorAll('#categoryButtonsContainer button').forEach(button => {
+                button.disabled = false;
+                button.classList.remove('opacity-50', 'cursor-not-allowed');
+                button.classList.add('hover:bg-blue-700', 'hover:scale-105');
+            });
         }
 
         // Event listeners for user activity to reset the timer
@@ -498,30 +481,40 @@
         // Initial check for activity when the page loads
         resetInactivityTimer();
 
+        // Function to generate the category buttons
+        function createCategoryButtons() {
+            categoryButtonsContainer.innerHTML = '';
+            Object.keys(categories).forEach(categoryTitle => {
+                const categoryKey = categories[categoryTitle];
+                const button = document.createElement('button');
+                button.id = `generateBtn-${categoryKey}`;
+                button.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75';
+                button.textContent = categoryTitle;
+                button.addEventListener('click', () => handleNewTest(categoryKey));
+                categoryButtonsContainer.appendChild(button);
+            });
+        }
+
         // Login function
-        loginBtn.addEventListener('click', async () => { // Made async to await loadSession
+        loginBtn.addEventListener('click', async () => {
             if (passwordInput.value === CORRECT_PASSWORD) {
                 loginScreen.style.display = 'none';
                 appContent.style.display = 'block';
                 loginError.style.display = 'none';
                 
-                const sessionResumed = await loadSession(); // Await the promise
+                createCategoryButtons();
+                const sessionResumed = await loadSession();
                 if (sessionResumed) {
-                    displayCurrentQuestion(); // Display the resumed question
-                    // Ensure buttons are correctly displayed/enabled for resumed session
+                    displayCurrentQuestion();
                     nextBtn.style.display = 'block';
                     saveAndExitBtn.style.display = 'block';
-                    nextBtn.disabled = true; // Still disabled until answer is picked
+                    nextBtn.disabled = true;
                     nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 } else {
-                    // If no session or user chose not to resume, start fresh
-                    questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
-                    generateBtn.style.display = 'block'; // Ensure generate button is visible
-                    nextBtn.style.display = 'none';
-                    saveAndExitBtn.style.display = 'none';
+                    questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите на кнопку категории, чтобы начать новый тест.</p>';
                 }
-                updateCompletedTestsBtnState(); // Update button state on login
-                resetInactivityTimer(); // Start timer after successful login
+                updateCompletedTestsBtnState();
+                resetInactivityTimer();
             } else {
                 loginError.style.display = 'block';
             }
@@ -552,54 +545,51 @@
         }
 
         // Function to show loading indicator
-        function showLoading() {
-            questionsContainer.innerHTML = ''; // Clear previous questions
+        function showLoading(categoryTitle) {
+            questionsContainer.innerHTML = '';
             loadingIndicator.innerHTML = `
-                <p class="text-xl font-semibold mb-4 text-gray-700">Генерация вопросов... это может занять несколько секунд.</p>
+                <p class="text-xl font-semibold mb-4 text-gray-700">Генерация вопросов для "${categoryTitle}"... это может занять несколько секунд.</p>
                 <div id="timer" class="text-md font-medium text-gray-500 mb-4"></div>
                 <div class="mt-4">
                     <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto"></div>
                 </div>
             `;
-            loadingIndicator.style.display = 'block'; // Make loading indicator visible
-            generateBtn.disabled = true;
-            generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            nextBtn.style.display = 'none'; // Hide next button during generation
-            saveAndExitBtn.style.display = 'none'; // Hide save and exit button during generation
+            loadingIndicator.style.display = 'block';
             
-            clearInterval(countdownInterval); // Clear any old timer
-            startCountdown(); // Start the new countdown
+            document.querySelectorAll('#categoryButtonsContainer button').forEach(button => {
+                button.disabled = true;
+                button.classList.add('opacity-50', 'cursor-not-allowed');
+                button.classList.remove('hover:bg-blue-700', 'hover:scale-105');
+            });
+
+            nextBtn.style.display = 'none';
+            saveAndExitBtn.style.display = 'none';
+            
+            clearInterval(countdownInterval);
+            startCountdown();
         }
 
         // Function to hide loading indicator
         function hideLoading() {
-            loadingIndicator.style.display = 'none'; // Hide loading indicator
-            loadingIndicator.innerHTML = ''; // Clear its content
-            generateBtn.disabled = false;
-            generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            clearInterval(countdownInterval); // Stop the countdown timer
+            loadingIndicator.style.display = 'none';
+            loadingIndicator.innerHTML = '';
+            clearInterval(countdownInterval);
         }
 
         // Function to generate multiple questions for a given category with exponential backoff
-        async function generateQuestionsForCategory(categoryName, categoryKey, difficulty, retries = 0) {
+        async function generateQuestionsForCategory(categoryTitle, categoryKey, difficulty, retries = 0) {
             const MAX_RETRIES = 5;
-            const BASE_DELAY_MS = 1000; // 1 second
+            const BASE_DELAY_MS = 1000;
+            
+            const numberOfQuestions = 7; 
 
             let prompt = "";
-            const numberOfQuestions = 7; // We want 7 questions per category
-
+            
             const difficultyModifier = difficulty === 'hard' ? 'challenging' : 'straightforward';
             const wordCountRange = difficulty === 'hard' ? '60-80' : '40-60';
             const analyticalSkill = difficulty === 'hard' ? 'deep analytical skills' : 'basic comprehension';
             const grammaticalNuance = difficulty === 'hard' ? 'complex grammatical error' : 'common grammatical error';
-            
-            // --- NEW: Check for API key existence before making the API call ---
-            if (!apiKey || apiKey === "YOUR_API_KEY") {
-                const errorMessage = "<p class='text-red-600'>Ошибка: API-ключ Gemini не установлен или недействителен. Пожалуйста, проверьте и обновите ваш ключ в файле `script.js`.</p>";
-                loadingIndicator.innerHTML = errorMessage;
-                hideLoading();
-                return null;
-            }
+            const rhetoricalEffect = difficulty === 'hard' ? 'advanced rhetorical effect' : 'clear and concise expression';
 
             // Define the JSON schema for the expected output
             const responseSchema = {
@@ -607,8 +597,7 @@
                 items: {
                     type: "OBJECT",
                     properties: {
-                        passage: { type: "STRING" }, // Now optional for figure-based questions
-                        svg_data: { type: "STRING" }, // New field for SVG data
+                        passage: { type: "STRING" },
                         question: { type: "STRING" },
                         options: {
                             type: "ARRAY",
@@ -623,99 +612,85 @@
                         },
                         correct_answer: { type: "STRING" },
                         explanation: { type: "STRING" },
-                        vocabulary: { // New vocabulary field
+                        vocabulary: {
                             type: "ARRAY",
                             items: {
                                 type: "OBJECT",
                                 properties: {
                                     word: { "type": "STRING" },
                                     translation: { "type": "STRING" },
-                                    explanation: { "type": "STRING" } // Added explanation for vocabulary
+                                    explanation: { "type": "STRING" }
                                 },
                                 required: ["word", "translation", "explanation"]
                             }
                         },
                         category: { type: "STRING" },
-                        question_type: { type: "STRING" } // Added to distinguish question types
+                        graphic: { type: "STRING" } // NEW: Add a field for the SVG graphic
                     },
-                    required: ["question_type", "question", "options", "correct_answer", "explanation", "category"]
+                    required: ["passage", "question", "options", "correct_answer", "explanation", "category"]
                 }
             };
             
-            // --- UPDATED: More varied prompts for each category, with new SVG instruction ---
             const basePrompt = (passageType, questionType, highlightInstruction = '') => `
-                Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryName}" questions.
+                Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions.
                 For each question, provide:
                 1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, drawing from various styles and sources, such as: ${passageType}. The passages should be fresh and not repeat previous topics.
-                2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer. The question and the answer options must be in English.
-                3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
+                2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer.
+                3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
                 4. The correct answer label (e.g., "A").
-                5. A brief explanation in Russian for the correct answer. **Пожалуйста, убедитесь, что все объяснения на русском языке написаны без грамматических и орфографических ошибок.**
-                6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array. **Убедитесь, что все переводы и объяснения в 'vocabulary' также написаны на правильном русском языке.**
-                7. Include the category name "${categoryName}" in a 'category' field and the question type in a 'question_type' field.
+                5. A brief explanation in Russian for the correct answer.
+                6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                7. Include the category name "${categoryTitle}" in a 'category' field.
                 ${highlightInstruction}
             `;
 
             switch (categoryKey) {
                 case "information_ideas":
-                    // This case is temporarily skipped in this version.
-                    prompt = `Generate ${numberOfQuestions} unique and diverse SAT-style questions for the "Information and Ideas" category. The questions should be a mix of the following types: Direct Questions, Inference Questions, Main Idea Questions, Figure based Questions, Strengthen Weaken Questions, Poem based Questions, and Character Descriptions.
-                    
-                    For each question, provide a JSON object.
-                    
-                    For 'Figure based Questions', **you must provide a complete, well-formed, and valid SVG string in the 'svg_data' field**, and the 'passage' field should be an empty string. The SVG must be a simple bar chart, line graph, or pie chart with clear English labels, a title, and be visually clean. It must not contain any lorem ipsum or garbled text. The SVG must be a single, self-contained XML block that is ready to be injected into an HTML div.
-                    
-                    For all other question types, the 'svg_data' field should be an empty string, and you must provide a short, ${difficultyModifier} passage (${wordCountRange} words) in the 'passage' field.
-                    
-                    For all question types, provide:
-                    1. A SAT-style question based on the passage or figure data that requires ${analyticalSkill} to answer. The question and the answer options must be in English.
-                    2. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
-                    3. The correct answer label (e.g., "A").
-                    4. A brief explanation in Russian for the correct answer. **Пожалуйста, убедитесь, что все объяснения на русском языке написаны без грамматических и орфографических ошибок.**
-                    5. Identify 4-5 English words from the passage or question that would likely be rare or complex for a 9th-grade student. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array. **Убедитесь, что все переводы и объяснения в 'vocabulary' также написаны на правильном русском языке.**
-                    6. Include the category name "Information and Ideas" in a 'category' field and the question type in a 'question_type' field.
-                    The passages should be fresh and not repeat previous topics.`;
+                    prompt = `
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions, covering a wide range of analytical skills.
+                        For each question, provide:
+                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic. Passages should be fresh and not repeat previous topics.
+                        2. A specific SAT-style question based on the passage, designed to test a particular skill.
+                        3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
+                        4. The correct answer label (e.g., "A").
+                        5. A brief explanation in Russian for the correct answer.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                        7. Include the category name "${categoryTitle}" in a 'category' field.
+                        
+                        The 7 questions should be of the following types, in this order:
+                        - Question 1 (Direct Question): Based on a historical document excerpt.
+                        - Question 2 (Inference Question): Based on an excerpt from a literary text.
+                        - Question 3 (Main Idea Question): Based on an excerpt from a scientific journal.
+                        - Question 4 (Figure based Question): Based on a bar chart, line graph, or pie chart. The passage field should provide context for the data, and a new "graphic" field must contain a **complete and self-contained SVG string** for the chart. **Ensure the SVG is compact, and all text labels (titles, axes, data labels) are legible, do not overlap, and are contained within the SVG's viewBox.** The SVG must be responsive, and all graphic components (bars, lines, slices) must use a color palette that excludes pure white and black.
+                        - Question 5 (Strengthen Weaken Question): Based on a short argumentative essay.
+                        - Question 6 (Poem based Question): Based on a short poem.
+                        - Question 7 (Character Descriptions): Based on an excerpt from a novel or a short story.
+                    `;
                     break;
                 case "craft_structure":
-                    prompt = `Generate ${numberOfQuestions} unique and diverse SAT-style questions for the "Craft and Structure" category. The questions should be a mix of the following types: Vocabulary in Context, Primary Purpose Questions, Purpose of a portion Questions, Structure Questions, Cross-text Connection Questions, and Quotes Illustrate Questions.
-                    For each question, provide:
-                    1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic. For Cross-text questions, provide two short passages. For other questions, use one passage. The passages should be fresh and not repeat previous topics.
-                    2. A SAT-style question based on the passage(s) that requires ${analyticalSkill} to answer, matching one of the requested types. The question and the answer options must be in English.
-                    3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
-                    4. The correct answer label (e.g., "A").
-                    5. A brief explanation in Russian for the correct answer. **Пожалуйста, убедитесь, что все объяснения на русском языке написаны без грамматических и орфографических ошибок.**
-                    6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array. **Убедитесь, что все переводы и объяснения в 'vocabulary' также написаны на правильном русском языке.**
-                    7. Include the category name "Craft and Structure" in a 'category' field and the question type in a 'question_type' field.`;
+                    prompt = basePrompt(
+                        'an excerpt from a literary text, a poem, an argumentative essay, or a personal journal entry that uses a specific rhetorical device', 
+                        'Vocabulary in Context or Rhetorical Purpose'
+                    );
+                    prompt += `\nFor these questions, a specific word or phrase in the passage should be highlighted by enclosing it in double asterisks (e.g., **word**). This highlighted part is the focus of the question.`;
                     break;
                 case "expression_ideas":
-                    prompt = `Generate ${numberOfQuestions} unique and diverse SAT-style questions for the "Expression of Ideas" category. The questions should be a mix of the following types: Transition Questions and Goal-based Questions.
-                    For each question, provide:
-                    1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a student's draft essay or a proposal that needs to be revised for logic and flow. The passages should be fresh and not repeat previous topics.
-                    2. A SAT-style question based on the passage, matching one of the requested types. The question and the answer options must be in English. For Transition Questions, the question should ask which sentence or phrase best connects two ideas. For Goal-based Questions, the question should ask which change best achieves a stated goal (e.g., "The author wants to add a sentence to emphasize a point. Which of the following sentences would best achieve this goal?").
-                    3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
-                    4. The correct answer label (e.g., "A").
-                    5. A brief explanation in Russian for the correct answer. **Пожалуйста, убедитесь, что все объяснения на русском языке написаны без грамматических и орфографических ошибок.**
-                    6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array. **Убедитесь, что все переводы и объяснения в 'vocabulary' также написаны на правильном русском языке.**
-                    7. Include the category name "Expression of Ideas" in a 'category' field and the question type in a 'question_type' field.`;
+                    prompt = basePrompt(
+                        'a draft of a student\'s essay, a policy proposal, or a research paper that needs revision for logic, style, or argument', 
+                        'Expression of Ideas (e.g., best revision, addition, or transition to improve ${rhetoricalEffect})'
+                    );
                     break;
                 case "standard_english_conventions":
-                    // UPDATED PROMPT based on user's new list of topics
-                    prompt = `Generate ${numberOfQuestions} unique and diverse SAT-style questions for the "Standard English Conventions" category. The questions should be a mix of the following types: Subject-verb agreement, Subject-pronoun agreement, Punctuation (including the comma subject rule, commas in lists, and introductions to lists), Apostrophe usage, Comparison rules, and Verb tense.
-                    For each question, provide:
-                    1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a historical account, a technical manual, or a biographical sketch. The passages should be fresh and not repeat previous topics.
-                    2. A SAT-style question based on the passage, matching one of the requested types. The question and the answer options must be in English.
-                    3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
-                    4. The correct answer label (e.g., "A").
-                    5. A brief explanation in Russian for the correct answer. **Пожалуйста, убедитесь, что все объяснения на русском языке написаны без грамматических и орфографических ошибок.**
-                    6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array. **Убедитесь, что все переводы и объяснения в 'vocabulary' также написаны на правильном русском языке.**
-                    7. Include the category name "Standard English Conventions" in a 'category' field and the question type in a 'question_type' field.
-                    The part of the passage with the grammatical or punctuation error should be highlighted by enclosing it in double asterisks (e.g., **phrase with error**).`;
+                    prompt = basePrompt(
+                        'a paragraph from a historical account, a technical manual, or a biographical sketch that contains a specific grammatical error (e.g., subject-verb agreement, pronoun use, punctuation)', 
+                        'Standard English Conventions (asking to correct a ${grammaticalNuance})'
+                    );
+                    prompt += `\nFor these questions, the part of the passage with the grammatical error should be highlighted by enclosing it in double asterisks (e.g., **phrase with error**).`;
                     break;
             }
 
             try {
-                // Use generationConfig to enforce JSON schema
-                const result = await textModel.generateContent({
+                const result = await model.generateContent({
                     contents: [{ role: "user", parts: [{ text: prompt }] }],
                     generationConfig: {
                         responseMimeType: "application/json",
@@ -723,49 +698,36 @@
                     }
                 });
                 
-                // The response should now be directly parsable JSON
-                let questionsArray = JSON.parse(result.response.text());
+                const questionsArray = JSON.parse(result.response.text());
                 
-                // Ensure the response is indeed an array
                 if (!Array.isArray(questionsArray)) {
                     throw new Error("API did not return a JSON array of questions.");
                 }
-                
-                // --- NEW LOGIC: Enforce the number of questions to be exactly 7 for Category 1 ---
-                if (categoryKey === "information_ideas" && questionsArray.length !== numberOfQuestions) {
-                    console.warn(`Category "${categoryName}" generated ${questionsArray.length} questions, but expected ${numberOfQuestions}. Trimming to the first ${numberOfQuestions}.`);
-                    questionsArray = questionsArray.slice(0, numberOfQuestions);
-                }
-
-                return questionsArray; // Return the array of questions
+                return questionsArray;
             } catch (error) {
-                console.error(`Error generating questions for ${categoryName} (Difficulty: ${difficulty}):`, error);
+                console.error(`Error generating questions for ${categoryTitle} (Difficulty: ${difficulty}):`, error);
                 
-                // Implement exponential backoff for retries
                 if (retries < MAX_RETRIES) {
-                    const delay = BASE_DELAY_MS * Math.pow(2, retries) + (Math.random() * 100); // Add jitter
-                    console.warn(`Retrying ${categoryName} question generation in ${delay}ms (retry ${retries + 1}/${MAX_RETRIES})...`);
+                    const delay = BASE_DELAY_MS * Math.pow(2, retries) + (Math.random() * 100);
+                    console.warn(`Retrying ${categoryTitle} question generation in ${delay}ms (retry ${retries + 1}/${MAX_RETRIES})...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
-                    return generateQuestionsForCategory(categoryName, categoryKey, difficulty, retries + 1);
+                    return generateQuestionsForCategory(categoryTitle, categoryKey, difficulty, retries + 1);
                 }
 
-                let errorMessage = `<p class='text-red-600'>Произошла ошибка при генерации вопросов для категории "${categoryName}" (Уровень: ${difficulty === 'hard' ? 'Усложненный' : 'Облегченный'}). Пожалуйста, попробуйте еще раз.</p>`;
-                
-                // --- NEW: More specific error handling based on API messages ---
+                let errorMessage = `<p class='text-red-600'>Произошла ошибка при генерации вопросов для категории "${categoryTitle}" (Уровень: ${difficulty === 'hard' ? 'Усложненный' : 'Облегченный'}). Пожалуйста, попробуйте еще раз.</p>`;
+
                 if (error.message) {
-                    if (error.message.includes("403")) {
-                        errorMessage = `<p class='text-red-600'>Ошибка: Доступ запрещен (ошибка 403). Проверьте, что ваш API-ключ имеет необходимые разрешения для модели Gemini в Google Cloud Console.</p>`;
+                    if (error.message.includes("403") && error.message.includes("unregistered callers")) {
+                        errorMessage = "<p class='text-red-600'>Ошибка: Проблема с доступом к Gemini API (ошибка 403). Пожалуйста, убедитесь, что ваш API-ключ действителен и имеет необходимые разрешения для модели 'gemini-2.5-flash-preview-05-20' в Google Cloud Console.</p>";
                     } else if (error.message.includes("API key not valid")) {
                         errorMessage = "<p class='text-red-600'>Ошибка: API ключ Gemini недействителен. Пожалуйста, убедитесь, что он правильно настроен в вашей среде.</p>";
                     } else if (error.message.includes("JSON")) {
-                         errorMessage = `<p class='text-red-600'>Ошибка парсинга JSON для категории "${categoryName}". Модель вернула некорректный формат. Пожалуйста, попробуйте еще раз.</p>`;
-                    } else {
-                        errorMessage += `<p class='text-red-600 mt-2'>Детали ошибки: ${error.message}</p>`;
+                         errorMessage = `<p class='text-red-600'>Ошибка парсинга JSON для категории "${categoryTitle}". Модель вернула некорректный формат. Пожалуйста, попробуйте еще раз.</p>`;
                     }
                 }
-                loadingIndicator.innerHTML = errorMessage; // Display error message in loading indicator area
-                hideLoading(); // Hide loading indicator (which now contains the error message)
-                return null; // Return null if all retries fail
+                loadingIndicator.innerHTML = errorMessage;
+                hideLoading();
+                return null;
             }
         }
 
@@ -776,22 +738,12 @@
             const questionCard = document.createElement('div');
             questionCard.className = isReview ? 'completed-test-details-question-card' : 'question-card';
 
-            // Check if it's a figure-based question and display the SVG if it exists
-            if (questionData.question_type === 'Figure based Questions' && questionData.svg_data) {
-                const svgContainer = document.createElement('div');
-                svgContainer.className = 'question-svg';
-                
-                // --- NEW LOGIC: Use a try-catch block for SVG injection ---
-                try {
-                    svgContainer.innerHTML = questionData.svg_data; // Inject the SVG code
-                    questionCard.appendChild(svgContainer);
-                } catch (svgError) {
-                    console.error("Error injecting SVG data:", svgError);
-                    const errorMsg = document.createElement('p');
-                    errorMsg.className = 'text-red-500 font-semibold text-center mt-4';
-                    errorMsg.textContent = 'Не удалось отобразить график.';
-                    questionCard.appendChild(errorMsg);
-                }
+            // NEW: Check for graphic data and add a container for it
+            if (questionData.graphic) {
+                const graphicContainer = document.createElement('div');
+                graphicContainer.className = 'svg-container';
+                graphicContainer.innerHTML = questionData.graphic;
+                questionCard.appendChild(graphicContainer);
             }
 
             let passageContent = questionData.passage;
@@ -799,34 +751,23 @@
             // First, add tooltips for vocabulary words
             if (questionData.vocabulary && Array.isArray(questionData.vocabulary)) {
                 questionData.vocabulary.forEach(vocabItem => {
-                    // Use a regex with global and case-insensitive flags for whole word match
-                    // Escape special characters in the word for regex safety
                     const escapedWord = vocabItem.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     const regex = new RegExp(`\\b${escapedWord}\\b`, 'gi'); 
-                    // Use a replacement function to preserve the original casing of the matched word
-                    if (passageContent) { // Check if passage exists before replacing
-                        passageContent = passageContent.replace(regex, (matchedWord) => {
-                            // Capitalize the first letter and make it bold for the tooltip display
-                            const formattedWordInTooltip = `<strong>${matchedWord.charAt(0).toUpperCase() + matchedWord.slice(1)}</strong>`;
-                            return `<span class="tooltip-container">${matchedWord}<span class="tooltip-text">${formattedWordInTooltip}: ${vocabItem.translation}: ${vocabItem.explanation}</span></span>`;
-                        });
-                    }
+                    passageContent = passageContent.replace(regex, (matchedWord) => {
+                        const formattedWordInTooltip = `<strong>${matchedWord.charAt(0).toUpperCase() + matchedWord.slice(1)}</strong>`;
+                        return `<span class="tooltip-container">${matchedWord}<span class="tooltip-text">${formattedWordInTooltip}: ${vocabItem.translation}: ${vocabItem.explanation}</span></span>`;
+                    });
                 });
             }
 
             // Then, apply highlighting for Craft and Structure / Standard English Conventions
-            if (passageContent && (categoryTitle === "Craft and Structure" || categoryTitle === "Standard English Conventions")) {
-                // For these categories, the model is instructed to use **...** for the highlighted part.
+            if (categoryTitle === "Craft and Structure" || categoryTitle === "Standard English Conventions") {
                 passageContent = passageContent.replace(/\*\*(.*?)\*\*/g, `<span class="font-bold underline">$1</span>`);
             }
             
-            // Display the passage only if it exists
-            if (passageContent) {
-                const passageDiv = document.createElement('div');
-                passageDiv.className = 'question-passage';
-                passageDiv.innerHTML = passageContent; // Use innerHTML to render bold/underline/tooltips
-                questionCard.appendChild(passageDiv);
-            }
+            const passageDiv = document.createElement('div');
+            passageDiv.className = 'question-passage';
+            passageDiv.innerHTML = passageContent;
 
             const questionTextDiv = document.createElement('div');
             questionTextDiv.className = 'question-text';
@@ -835,19 +776,18 @@
             const optionsList = document.createElement('div');
             optionsList.className = 'options-list';
 
-            // Ensure questionData.options is an array before iterating
             let optionsToDisplay = questionData.options;
             if (typeof optionsToDisplay === 'string') {
                 try {
                     optionsToDisplay = JSON.parse(optionsToDisplay);
                 } catch (e) {
                     console.warn("Could not parse options string:", optionsToDisplay, e);
-                    optionsToDisplay = []; // Fallback to empty array if parsing fails
+                    optionsToDisplay = [];
                 }
             }
             if (!Array.isArray(optionsToDisplay)) {
                 console.warn("questionData.options is not an array after processing:", optionsToDisplay);
-                optionsToDisplay = []; // Ensure it's an array for forEach
+                optionsToDisplay = [];
             }
 
             const explanationDiv = document.createElement('div');
@@ -855,10 +795,8 @@
             explanationDiv.textContent = `Объяснение: ${questionData.explanation}`;
             
             if (isReview) {
-                // In review mode, show the explanation by default
                 explanationDiv.style.display = 'block';
             } else {
-                // In quiz mode, hide explanation initially
                 explanationDiv.style.display = 'none';
             }
 
@@ -866,13 +804,12 @@
                 const optionItem = document.createElement('div');
                 optionItem.className = `option-item px-4 py-2 cursor-pointer rounded-md transition duration-200 ease-in-out hover:bg-gray-100`;
                 optionItem.textContent = `${option.label}. ${option.text}`;
-                optionItem.dataset.label = option.label; // Store option label
-                optionItem.dataset.correctAnswer = questionData.correct_answer; // Store correct answer
+                optionItem.dataset.label = option.label;
+                optionItem.dataset.correctAnswer = questionData.correct_answer;
 
                 if (isReview) {
-                    // Review mode: highlight user's answer and correct answer
                     optionItem.classList.add('disabled');
-                    optionItem.style.pointerEvents = 'none'; // Ensure options are not clickable
+                    optionItem.style.pointerEvents = 'none';
 
                     const userLabel = questionData.user_answer;
                     const correctLabel = questionData.correct_answer;
@@ -884,48 +821,45 @@
                         optionItem.classList.add('incorrect');
                     }
                 } else {
-                    // Quiz mode: add click listener
                     optionItem.addEventListener('click', function() {
-                        // Disable all options for this question after a choice is made
                         optionsList.querySelectorAll('.option-item').forEach(opt => {
                             opt.classList.add('disabled');
-                            opt.style.pointerEvents = 'none'; // Ensure it's truly unclickable
+                            opt.style.pointerEvents = 'none';
                         });
 
                         const selectedLabel = this.dataset.label;
                         const correctAnswerLabel = this.dataset.correctAnswer;
 
-                        // Записываем ответ пользователя в массив completedQuestions
                         const questionWithAnswer = {
                             ...questionData,
                             user_answer: selectedLabel
                         };
                         completedQuestions.push(questionWithAnswer);
                         
-                        // Apply correct/incorrect styling and show explanation
                         optionsList.querySelectorAll('.option-item').forEach(opt => {
                             if (opt.dataset.label === correctAnswerLabel) {
                                 opt.classList.add('correct');
-                            } else if (opt.dataset.label === selectedLabel) { // This is the selected, but incorrect, option
+                            } else if (opt.dataset.label === selectedLabel) {
                                 opt.classList.add('incorrect');
                             }
                         });
 
-                        // Show the explanation
-                        explanationDiv.style.display = 'block'; // Make sure explanation is visible
+                        explanationDiv.style.display = 'block';
 
-                        // Enable next button after an answer is selected
                         nextBtn.disabled = false;
                         nextBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                        resetInactivityTimer(); // Reset timer on interaction
+                        resetInactivityTimer();
                     });
                 }
                 optionsList.appendChild(optionItem);
             });
 
+            if (passageDiv.innerHTML.trim() !== '') { // Only append if there's actual passage content
+                questionCard.appendChild(passageDiv);
+            }
             questionCard.appendChild(questionTextDiv);
             questionCard.appendChild(optionsList);
-            questionCard.appendChild(explanationDiv); // Append explanation after options
+            questionCard.appendChild(explanationDiv);
 
             return questionCard;
         }
@@ -937,13 +871,12 @@
             const questionsInCurrentCategory = allGeneratedQuestions[currentCategoryKey];
 
             if (questionsInCurrentCategory && questionsInCurrentCategory.length > currentQuestionIndex) {
-                questionsContainer.innerHTML = ''; // Clear previous question
+                questionsContainer.innerHTML = '';
                 const sectionDiv = document.createElement('div');
                 sectionDiv.className = 'category-section mb-10';
 
                 const sectionTitle = document.createElement('h2');
                 sectionTitle.className = 'text-2xl font-semibold text-gray-700 mb-6 section-title';
-                // Add Roman numeral to the category title
                 const romanNumeral = romanNumerals[currentCategoryIndex] || '';
                 sectionTitle.textContent = `${romanNumeral}. ${currentCategoryTitle} (Вопрос ${currentQuestionIndex + 1} из ${questionsInCurrentCategory.length})`;
                 sectionDiv.appendChild(sectionTitle);
@@ -955,98 +888,62 @@
                 }
                 questionsContainer.appendChild(sectionDiv);
 
-                // Disable next button until an answer is selected
                 nextBtn.disabled = true;
                 nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                nextBtn.style.display = 'block'; // Ensure next button is visible
-                saveAndExitBtn.style.display = 'block'; // Ensure save and exit button is visible
+                nextBtn.style.display = 'block';
+                saveAndExitBtn.style.display = 'block';
 
-                // Update next button text and hide "Save and Exit" on the last question
                 const isLastQuestion = (currentCategoryIndex === categoriesArray.length - 1 && currentQuestionIndex === questionsInCurrentCategory.length - 1);
                 if (isLastQuestion) {
                     nextBtn.textContent = 'Завершить тест';
-                    saveAndExitBtn.style.display = 'none'; // Hide "Сохранить и выйти" on the very last question
+                    saveAndExitBtn.style.display = 'none';
                 } else {
                     nextBtn.textContent = 'Следующий вопрос';
-                    saveAndExitBtn.style.display = 'block'; // Show "Сохранить и выйти" on other questions
+                    saveAndExitBtn.style.display = 'block';
                 }
-
             } else {
-                // This case should not be hit if logic is correct.
-                // Call end quiz function directly as a fallback.
                 endQuiz(); 
             }
         }
 
-        // Main function to generate all questions and start the quiz
-        async function generateAllQuestions() {
-            showLoading(); // Show loading indicator at the start
+        // Main function to generate questions and start the quiz for a specific category
+        async function handleNewTest(categoryKey) {
+            if (isSessionActive) {
+                const wantsToContinue = await showCustomConfirm('В настоящий момент у вас активен тест. Хотите начать новый тест и отменить текущий?');
+                if (!wantsToContinue) {
+                    return;
+                }
+            }
             
-            // Clear any existing session when starting a new test
+            const categoryTitle = Object.keys(categories).find(key => categories[key] === categoryKey);
+            showLoading(categoryTitle);
+            
             localStorage.removeItem('satQuizSession'); 
-            completedQuestions = []; // Очищаем массив с ответами при начале нового теста
+            completedQuestions = [];
 
             isSessionActive = true;
             updateCompletedTestsBtnState();
 
-            allGeneratedQuestions = {}; // Reset for new generation
+            allGeneratedQuestions = {};
             currentCategoryIndex = 0;
             currentQuestionIndex = 0;
-            categoriesArray = Object.keys(categories); // Update categories array
+            categoriesArray = [categoryTitle]; // Set the active category
 
-            // Create an array of promises, one for each category
-            const generationPromises = categoriesArray.map(async (categoryTitle) => {
-                const categoryKey = categories[categoryTitle];
-                const selectedDifficulty = difficultySelect.value;
-                return generateQuestionsForCategory(categoryTitle, categoryKey, selectedDifficulty);
-            });
+            const selectedDifficulty = difficultySelect.value;
+            const questionsForCategory = await generateQuestionsForCategory(categoryTitle, categoryKey, selectedDifficulty);
 
-            try {
-                // Wait for all promises to resolve in parallel
-                const results = await Promise.all(generationPromises);
-                let allSuccessful = true;
-                
-                // Process the results
-                results.forEach((questionsForCategory, index) => {
-                    const categoryTitle = categoriesArray[index];
-                    const categoryKey = categories[categoryTitle];
-                    if (questionsForCategory && questionsForCategory.length > 0) {
-                        allGeneratedQuestions[categoryKey] = questionsForCategory;
-                    } else {
-                        allSuccessful = false;
-                        // Add a visual error card for the user for the failed category
-                        const errorCard = document.createElement('div');
-                        errorCard.className = 'question-card bg-red-100 text-red-800';
-                        errorCard.textContent = `Не удалось сгенерировать вопросы для категории "${categoryTitle}". Пожалуйста, попробуйте еще раз.`;
-                        questionsContainer.appendChild(errorCard);
-                    }
-                });
+            hideLoading();
 
-                hideLoading(); // Hide loading indicator after all generations are complete
-
-                if (allSuccessful && categoriesArray.length > 0) {
-                    // Check if the first category has questions, as a minimal check to start the quiz
-                    if (allGeneratedQuestions[categories[categoriesArray[0]]]) {
-                        nextBtn.style.display = 'block';
-                        saveAndExitBtn.style.display = 'block';
-                        displayCurrentQuestion(); // Display the first question
-                        resetInactivityTimer(); // Reset timer after generation
-                    } else {
-                         nextBtn.style.display = 'none';
-                         saveAndExitBtn.style.display = 'none';
-                    }
-                } else {
-                    // All generations failed or some failed, so we can't start the quiz
-                    nextBtn.style.display = 'none';
-                    saveAndExitBtn.style.display = 'none';
-                }
-
-            } catch (error) {
-                console.error("An error occurred during parallel question generation:", error);
-                loadingIndicator.innerHTML = `<p class='text-red-600'>Произошла общая ошибка при генерации вопросов. Пожалуйста, попробуйте еще раз.</p>`;
-                hideLoading();
+            if (questionsForCategory && questionsForCategory.length > 0) {
+                allGeneratedQuestions[categoryKey] = questionsForCategory;
+                nextBtn.style.display = 'block';
+                saveAndExitBtn.style.display = 'block';
+                displayCurrentQuestion();
+                resetInactivityTimer();
+            } else {
                 nextBtn.style.display = 'none';
                 saveAndExitBtn.style.display = 'none';
+                questionsContainer.innerHTML = `<p class="text-center text-red-600 text-lg">Не удалось сгенерировать вопросы для категории "${categoryTitle}". Пожалуйста, попробуйте еще раз.</p>`;
             }
         }
 
@@ -1062,17 +959,15 @@
             }
 
             if (currentCategoryIndex >= categoriesArray.length) {
-                // All questions and categories are exhausted
                 endQuiz();
             } else {
                 displayCurrentQuestion();
-                resetInactivityTimer(); // Reset timer on next question
+                resetInactivityTimer();
             }
         }
         
         // Function to handle quiz completion
         function endQuiz() {
-            // Сохраняем завершенный тест в локальное хранилище
             const completedTests = JSON.parse(localStorage.getItem('satCompletedTests') || '[]');
             const newCompletedTest = {
                 timestamp: new Date().toISOString(),
@@ -1083,29 +978,30 @@
             localStorage.setItem('satCompletedTests', JSON.stringify(completedTests));
             console.log('Completed test saved locally.');
             
-            // Сбрасываем состояние
             isSessionActive = false;
             updateCompletedTestsBtnState();
-            localStorage.removeItem('satQuizSession'); // Clear session when test is fully completed
-            completedQuestions = []; // Очищаем массив после сохранения
-            allGeneratedQuestions = {}; // Очищаем сгенерированные вопросы, чтобы гарантировать новый тест
+            localStorage.removeItem('satQuizSession');
+            completedQuestions = [];
+            allGeneratedQuestions = {};
+            categoriesArray = [];
 
-            // Возвращаемся на главный экран приложения
-            questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Тест завершен. Нажмите "Сгенерировать вопросы", чтобы начать новый тест.</p>';
+            questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Тест завершен. Нажмите на кнопку категории, чтобы начать новый тест.</p>';
             
-            // Сбрасываем кнопки
             nextBtn.style.display = 'none';
             saveAndExitBtn.style.display = 'none';
-            generateBtn.style.display = 'block'; 
-            generateBtn.disabled = false; 
-            generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
             nextBtn.textContent = 'Следующий вопрос'; 
             clearTimeout(inactivityTimer); 
+            
+            document.querySelectorAll('#categoryButtonsContainer button').forEach(button => {
+                button.disabled = false;
+                button.classList.remove('opacity-50', 'cursor-not-allowed');
+                button.classList.add('hover:bg-blue-700', 'hover:scale-105');
+            });
         }
 
         // Function to handle saving and exiting the test
         function handleSaveAndExit() {
-            logoutUser(); // Call logoutUser, which will save the current session by default
+            logoutUser();
             questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Тест сохранен. Вы можете сгенерировать новые вопросы.</p>';
         }
 
@@ -1117,7 +1013,7 @@
             completedTestDetailsContainer.style.display = 'none';
             
             const completedTests = JSON.parse(localStorage.getItem('satCompletedTests') || '[]');
-            testsListContainer.innerHTML = ''; // Clear previous list
+            testsListContainer.innerHTML = '';
 
             if (completedTests.length === 0) {
                 testsListContainer.innerHTML = '<p class="text-center text-gray-600">У вас пока нет завершенных тестов.</p>';
@@ -1125,10 +1021,11 @@
             }
 
             completedTests.reverse().forEach((test, index) => {
+                const categoryTitle = test.questions[0].category || 'Неизвестная категория';
                 const testCard = document.createElement('div');
                 testCard.className = 'completed-test-card';
                 testCard.innerHTML = `
-                    <p class="text-lg font-semibold text-gray-800">Тест от ${new Date(test.timestamp).toLocaleString('ru-RU')}</p>
+                    <p class="text-lg font-semibold text-gray-800">Тест (${categoryTitle}) от ${new Date(test.timestamp).toLocaleString('ru-RU')}</p>
                     <p class="text-sm text-gray-600">Сложность: ${test.difficulty === 'hard' ? 'Усложненный' : 'Облегченный'}</p>
                 `;
                 testCard.addEventListener('click', () => displayCompletedTestDetails(test));
@@ -1137,12 +1034,11 @@
         }
 
         function displayCompletedTestDetails(testData) {
-            // Store the currently viewed test data for the delete button
             currentReviewingTest = testData;
 
             testsListContainer.style.display = 'none';
             completedTestDetailsContainer.style.display = 'block';
-            testReviewContainer.innerHTML = ''; // Clear previous review
+            testReviewContainer.innerHTML = '';
 
             const reviewTitle = document.createElement('h2');
             reviewTitle.className = 'text-3xl font-bold text-gray-800 mb-6';
@@ -1151,9 +1047,8 @@
 
             const allQuestions = testData.questions;
             const categoriesMap = {};
-            // Group questions by category
             allQuestions.forEach(q => {
-                const category = q.category || 'Information and Ideas'; // Fallback if category is missing
+                const category = q.category || 'Information and Ideas';
                 if (!categoriesMap[category]) {
                     categoriesMap[category] = [];
                 }
@@ -1161,23 +1056,20 @@
             });
 
             let questionCounter = 0;
-            // Iterate over categories and display questions with Roman numerals
             Object.keys(categoriesMap).forEach((categoryTitle, categoryIndex) => {
                 const sectionTitle = document.createElement('h3');
                 sectionTitle.className = 'text-2xl font-semibold text-gray-700 mt-8 mb-4';
-                // Add Roman numeral to the category title
                 const romanNumeral = romanNumerals[categoryIndex] || '';
                 sectionTitle.textContent = `${romanNumeral}. ${categoryTitle}`;
                 testReviewContainer.appendChild(sectionTitle);
 
                 categoriesMap[categoryTitle].forEach(question => {
                     questionCounter++;
-                    const questionCard = displayQuestion(question, categoryTitle, true); // `true` for review mode
+                    const questionCard = displayQuestion(question, categoryTitle, true);
                     const questionNumberText = document.createElement('p');
                     questionNumberText.className = 'font-semibold text-lg text-gray-800 mb-2';
                     questionNumberText.textContent = `Вопрос ${questionCounter}.`;
                     
-                    // Display user's answer and correct answer
                     const userAndCorrectAnswerDiv = document.createElement('div');
                     userAndCorrectAnswerDiv.className = 'completed-test-card-details';
                     
@@ -1200,39 +1092,34 @@
             });
         }
         
-        // Function to go back to the main app screen from completed tests
         function backToMainScreen() {
             completedTestsScreen.style.display = 'none';
             appContent.style.display = 'block';
-            updateCompletedTestsBtnState(); // Ensure button state is correct on return
+            updateCompletedTestsBtnState();
         }
 
-        // Function to delete the currently reviewed test
         function deleteCurrentTest() {
             if (!currentReviewingTest) {
                 console.error("No test selected for deletion.");
                 return;
             }
 
-            // Show a custom confirmation dialog before deleting
             showCustomConfirm('Вы уверены, что хотите удалить этот тест? Это действие необратимо.').then(wantsToDelete => {
                 if (wantsToDelete) {
                     let completedTests = JSON.parse(localStorage.getItem('satCompletedTests') || '[]');
                     const filteredTests = completedTests.filter(test => test.timestamp !== currentReviewingTest.timestamp);
                     localStorage.setItem('satCompletedTests', JSON.stringify(filteredTests));
                     console.log('Test deleted successfully.');
-                    // Go back to the list of completed tests after deletion
                     showCompletedTests();
                 }
             });
         }
 
-
-        // Attach event listeners
-        generateBtn.addEventListener('click', generateAllQuestions);
         nextBtn.addEventListener('click', () => {
+            const currentCategoryKey = categories[categoriesArray[currentCategoryIndex]];
+            const questionsInCurrentCategory = allGeneratedQuestions[currentCategoryKey];
             const isLastQuestion = (currentCategoryIndex === categoriesArray.length - 1 && 
-                                   currentQuestionIndex === allGeneratedQuestions[categories[categoriesArray[currentCategoryIndex]]].length - 1);
+                                   currentQuestionIndex === questionsInCurrentCategory.length - 1);
             if (isLastQuestion) {
                 endQuiz();
             } else {
@@ -1241,17 +1128,15 @@
         });
         saveAndExitBtn.addEventListener('click', handleSaveAndExit);
         
-        // New event listeners for completed tests feature
         showCompletedTestsBtn.addEventListener('click', showCompletedTests);
         backToTestsBtn.addEventListener('click', () => {
             testsListContainer.style.display = 'block';
             completedTestDetailsContainer.style.display = 'none';
-            currentReviewingTest = null; // Clear the reviewing test when going back
+            currentReviewingTest = null;
         });
-        backToMainBtn.addEventListener('click', backToMainScreen); // New event listener
-        deleteTestBtn.addEventListener('click', deleteCurrentTest); // New event listener for the delete button
+        backToMainBtn.addEventListener('click', backToMainScreen);
+        deleteTestBtn.addEventListener('click', deleteCurrentTest);
 
-        // Initial check for a saved session and update the button state
         const savedSession = localStorage.getItem('satQuizSession');
         if (savedSession) {
             isSessionActive = true;
