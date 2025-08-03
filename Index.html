@@ -194,11 +194,19 @@
         .svg-container {
             width: 100%;
             height: auto;
+            max-width: 600px; /* New: Limit max width on large screens */
             margin-bottom: 1rem;
             padding: 1rem;
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
             border-radius: 0.75rem;
+            margin-left: auto; /* New: Center the container */
+            margin-right: auto; /* New: Center the container */
+        }
+        /* New: Style for text inside the SVG */
+        .svg-container svg text {
+            font-family: 'Inter', sans-serif;
+            font-size: 12px; /* Set a default font size */
         }
     </style>
 </head>
@@ -661,7 +669,7 @@
                         - Question 1 (Direct Question): Based on a historical document excerpt.
                         - Question 2 (Inference Question): Based on an excerpt from a literary text.
                         - Question 3 (Main Idea Question): Based on an excerpt from a scientific journal.
-                        - Question 4 (Figure based Question): Based on a bar chart, line graph, or pie chart. The passage field should provide context for the data, and a new "graphic" field must contain a **complete and self-contained SVG string** for the chart. **Ensure the SVG is compact, and all text labels (titles, axes, data labels) are legible, do not overlap, and are contained within the SVG's viewBox.** The SVG must be responsive, and all graphic components (bars, lines, slices) must use a color palette that excludes pure white and black.
+                        - Question 4 (Figure based Question): Based on a bar chart, line graph, or pie chart. The passage field should provide context for the data, and a new "graphic" field must contain a **complete and self-contained SVG string** for the chart. **Ensure the SVG is compact, and all text labels (titles, axes, data labels) are legible, do not overlap, are contained within the SVG's viewBox, and use the 'Inter, sans-serif' font family with a font-size of 12px to match the application's styling.** The SVG must be responsive, and all graphic components (bars, lines, slices) must use a color palette that excludes pure white and black.
                         - Question 5 (Strengthen Weaken Question): Based on a short argumentative essay.
                         - Question 6 (Poem based Question): Based on a short poem.
                         - Question 7 (Character Descriptions): Based on an excerpt from a novel or a short story.
