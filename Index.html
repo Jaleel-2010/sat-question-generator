@@ -220,6 +220,13 @@
 
     <div id="appContent" class="container" style="display: none;">
         <h1 class="text-4xl font-bold text-center text-gray-800 mb-8">Генератор вопросов SAT (Verbal Section)</h1>
+        
+        <div id="timerContainer" class="flex items-center justify-center mb-4 text-xl font-bold text-red-600" style="display: none;">
+            <svg class="h-6 w-6 mr-2 animate-pulse" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span id="fullTestTimer"></span>
+        </div>
 
         <div class="mb-6">
             <label for="difficultySelect" class="block text-gray-700 text-sm font-bold mb-2">Выберите уровень сложности:</label>
@@ -234,7 +241,10 @@
         </div>
 
         <div class="flex flex-col sm:flex-row justify-between gap-4 mb-4">
-            <button id="showCompletedTestsBtn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75" disabled>
+            <button id="fullTestBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75">
+                Полный тест с контролем времени
+            </button>
+            <button id="showCompletedTestsBtn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-75">
                 Завершенные тесты
             </button>
         </div>
@@ -248,11 +258,11 @@
         </div>
 
         <div class="flex flex-col sm:flex-row justify-between gap-4 mt-4">
-            <button id="nextBtn" class="w-full sm:w-1/2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75" style="display: none;">
-                Следующий вопрос
-            </button>
             <button id="saveAndExitBtn" class="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75" style="display: none;">
                 Сохранить и выйти
+            </button>
+            <button id="nextBtn" class="w-full sm:w-1/2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75" style="display: none;">
+                Следующий вопрос
             </button>
         </div>
     </div>
@@ -300,6 +310,7 @@
         const loginError = document.getElementById('loginError');
         const appContent = document.getElementById('appContent');
         const categoryButtonsContainer = document.getElementById('categoryButtonsContainer');
+        const fullTestBtn = document.getElementById('fullTestBtn');
 
         const questionsContainer = document.getElementById('questionsContainer');
         const showCompletedTestsBtn = document.getElementById('showCompletedTestsBtn');
@@ -314,6 +325,8 @@
         const nextBtn = document.getElementById('nextBtn');
         const saveAndExitBtn = document.getElementById('saveAndExitBtn');
         const deleteTestBtn = document.getElementById('deleteTestBtn');
+        const timerContainer = document.getElementById('timerContainer');
+        const fullTestTimer = document.getElementById('fullTestTimer');
 
         const categories = {
             "Information and Ideas": "information_ideas",
@@ -330,7 +343,9 @@
         let currentCategoryIndex = 0;
         let currentQuestionIndex = 0;
         let isSessionActive = false;
+        let isFullTest = false; // New state variable
         let currentReviewingTest = null;
+        let questionStartTime = 0; // NEW: Timer for individual questions
 
         // Hardcoded password for client-side authentication
         const CORRECT_PASSWORD = "Jaleel2010";
@@ -340,8 +355,14 @@
         const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
         
         // Countdown timer variables
-        let countdownInterval;
-        const COUNTDOWN_SECONDS = 90;
+        let generationCountdownInterval;
+        const GENERATION_COUNTDOWN_SECONDS = 90;
+
+        // Full Test timer variables - UPDATED
+        let fullTestInterval;
+        const FULL_TEST_DURATION_MINUTES = 30; // UPDATED to 30 minutes
+        const FULL_TEST_DURATION_SECONDS = FULL_TEST_DURATION_MINUTES * 60;
+        let timeLeft = FULL_TEST_DURATION_SECONDS;
 
         // Function to reset the inactivity timer
         function resetInactivityTimer() {
@@ -358,7 +379,9 @@
                     questions: allGeneratedQuestions,
                     difficulty: difficultySelect.value,
                     completedQuestions: completedQuestions,
-                    categoriesArray: categoriesArray // Save the active categories
+                    categoriesArray: categoriesArray,
+                    isFullTest: isFullTest,
+                    timeLeft: timeLeft
                 };
                 localStorage.setItem('satQuizSession', JSON.stringify(sessionData));
                 console.log('Session saved.');
@@ -381,13 +404,14 @@
                             difficultySelect.value = sessionData.difficulty;
                             completedQuestions = sessionData.completedQuestions || [];
                             categoriesArray = sessionData.categoriesArray || Object.keys(categories);
+                            isFullTest = sessionData.isFullTest || false;
+                            timeLeft = sessionData.timeLeft || FULL_TEST_DURATION_SECONDS;
                             isSessionActive = true;
                             console.log('Session loaded. Resuming test.');
                             resolve(true);
                         } else {
                             localStorage.removeItem('satQuizSession');
                             isSessionActive = false;
-                            console.log('Saved session discarded.');
                             resolve(false);
                         }
                     });
@@ -423,17 +447,25 @@
             });
         }
 
-        // Function to update the disabled state of the "Completed Tests" button
-        function updateCompletedTestsBtnState() {
-            if (isSessionActive) {
-                showCompletedTestsBtn.disabled = true;
-                showCompletedTestsBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                showCompletedTestsBtn.classList.remove('hover:bg-gray-600', 'hover:scale-105');
-            } else {
-                showCompletedTestsBtn.disabled = false;
-                showCompletedTestsBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                showCompletedTestsBtn.classList.add('hover:bg-gray-600', 'hover:scale-105');
-            }
+        // Function to update the disabled state of the buttons
+        function updateMainButtonsState(isDisabled) {
+            document.querySelectorAll('#categoryButtonsContainer button').forEach(button => {
+                button.disabled = isDisabled;
+                button.classList.toggle('opacity-50', isDisabled);
+                button.classList.toggle('cursor-not-allowed', isDisabled);
+                button.classList.toggle('hover:bg-blue-700', !isDisabled);
+                button.classList.toggle('hover:scale-105', !isDisabled);
+            });
+            fullTestBtn.disabled = isDisabled;
+            fullTestBtn.classList.toggle('opacity-50', isDisabled);
+            fullTestBtn.classList.toggle('cursor-not-allowed', isDisabled);
+            fullTestBtn.classList.toggle('hover:bg-indigo-700', !isDisabled);
+            fullTestBtn.classList.toggle('hover:scale-105', !isDisabled);
+            showCompletedTestsBtn.disabled = isDisabled;
+            showCompletedTestsBtn.classList.toggle('opacity-50', isDisabled);
+            showCompletedTestsBtn.classList.toggle('cursor-not-allowed', isDisabled);
+            showCompletedTestsBtn.classList.toggle('hover:bg-gray-600', !isDisabled);
+            showCompletedTestsBtn.classList.toggle('hover:scale-105', !isDisabled);
         }
 
         // Function to log out the user and reset the app state
@@ -445,7 +477,8 @@
             }
             
             isSessionActive = false;
-            updateCompletedTestsBtnState();
+            isFullTest = false;
+            updateMainButtonsState(false);
 
             // Hide app content and show login screen
             appContent.style.display = 'none';
@@ -460,6 +493,7 @@
             currentQuestionIndex = 0;
             currentReviewingTest = null;
             categoriesArray = [];
+            questionStartTime = 0;
 
             // Hide all buttons that appear after login/generation
             nextBtn.style.display = 'none';
@@ -467,17 +501,12 @@
             questionsContainer.innerHTML = '';
             loadingIndicator.style.display = 'none';
             loadingIndicator.innerHTML = '';
+            timerContainer.style.display = 'none';
 
-            // Stop any existing inactivity timer and countdown timer
+            // Stop any existing timers
             clearTimeout(inactivityTimer);
-            clearInterval(countdownInterval);
-
-            // Re-enable all category buttons
-            document.querySelectorAll('#categoryButtonsContainer button').forEach(button => {
-                button.disabled = false;
-                button.classList.remove('opacity-50', 'cursor-not-allowed');
-                button.classList.add('hover:bg-blue-700', 'hover:scale-105');
-            });
+            clearInterval(generationCountdownInterval);
+            clearInterval(fullTestInterval);
         }
 
         // Event listeners for user activity to reset the timer
@@ -515,13 +544,18 @@
                 if (sessionResumed) {
                     displayCurrentQuestion();
                     nextBtn.style.display = 'block';
-                    saveAndExitBtn.style.display = 'block';
+                    // Conditional display for save/exit button
+                    saveAndExitBtn.style.display = isFullTest ? 'none' : 'block';
                     nextBtn.disabled = true;
                     nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                    if (isFullTest) {
+                        startFullTestTimer();
+                        timerContainer.style.display = 'flex';
+                    }
                 } else {
-                    questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите на кнопку категории, чтобы начать новый тест.</p>';
+                    questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Нажмите на кнопку категории, чтобы начать новый тест, или "Полный тест с контролем времени".</p>';
                 }
-                updateCompletedTestsBtnState();
+                updateMainButtonsState(isSessionActive);
                 resetInactivityTimer();
             } else {
                 loginError.style.display = 'block';
@@ -535,28 +569,46 @@
             }
         });
         
-        // Function to start the countdown timer
-        function startCountdown() {
-            let timeLeft = COUNTDOWN_SECONDS;
+        // Function to start the generation countdown timer
+        function startGenerationCountdown() {
+            let timeLeft = GENERATION_COUNTDOWN_SECONDS;
             const timerElement = document.getElementById('timer');
             timerElement.textContent = `Осталось времени: ${timeLeft} сек.`;
 
-            countdownInterval = setInterval(() => {
+            generationCountdownInterval = setInterval(() => {
                 timeLeft--;
                 if (timeLeft >= 0) {
                     timerElement.textContent = `Осталось времени: ${timeLeft} сек.`;
                 } else {
-                    clearInterval(countdownInterval);
+                    clearInterval(generationCountdownInterval);
                     timerElement.textContent = 'Время вышло, генерация продолжается...';
                 }
             }, 1000);
         }
 
+        // Function to start the full test timer
+        function startFullTestTimer() {
+            clearInterval(fullTestInterval);
+            timerContainer.style.display = 'flex';
+
+            fullTestInterval = setInterval(() => {
+                timeLeft--;
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                fullTestTimer.textContent = `Осталось: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(fullTestInterval);
+                    endQuizTimedOut();
+                }
+            }, 1000);
+        }
+
         // Function to show loading indicator
-        function showLoading(categoryTitle) {
+        function showLoading(message) {
             questionsContainer.innerHTML = '';
             loadingIndicator.innerHTML = `
-                <p class="text-xl font-semibold mb-4 text-gray-700">Генерация вопросов для "${categoryTitle}"... это может занять несколько секунд.</p>
+                <p class="text-xl font-semibold mb-4 text-gray-700">${message}</p>
                 <div id="timer" class="text-md font-medium text-gray-500 mb-4"></div>
                 <div class="mt-4">
                     <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-gray-900 mx-auto"></div>
@@ -564,24 +616,21 @@
             `;
             loadingIndicator.style.display = 'block';
             
-            document.querySelectorAll('#categoryButtonsContainer button').forEach(button => {
-                button.disabled = true;
-                button.classList.add('opacity-50', 'cursor-not-allowed');
-                button.classList.remove('hover:bg-blue-700', 'hover:scale-105');
-            });
+            updateMainButtonsState(true);
 
             nextBtn.style.display = 'none';
             saveAndExitBtn.style.display = 'none';
+            timerContainer.style.display = 'none';
             
-            clearInterval(countdownInterval);
-            startCountdown();
+            clearInterval(generationCountdownInterval);
+            startGenerationCountdown();
         }
 
         // Function to hide loading indicator
         function hideLoading() {
             loadingIndicator.style.display = 'none';
             loadingIndicator.innerHTML = '';
-            clearInterval(countdownInterval);
+            clearInterval(generationCountdownInterval);
         }
 
         // Function to generate multiple questions for a given category with exponential backoff
@@ -638,21 +687,9 @@
                 }
             };
             
-            const basePrompt = (passageType, questionType, highlightInstruction = '') => `
-                Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions.
-                For each question, provide:
-                1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, drawing from various styles and sources, such as: ${passageType}. The passages should be fresh and not repeat previous topics.
-                2. A SAT-style "${questionType}" question based on the passage that requires ${analyticalSkill} to answer.
-                3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
-                4. The correct answer label (e.g., "A").
-                5. A brief explanation in Russian for the correct answer.
-                6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
-                7. Include the category name "${categoryTitle}" in a 'category' field.
-                ${highlightInstruction}
-            `;
-
             switch (categoryKey) {
                 case "information_ideas":
+                    // UPDATED PROMPT: Specific question types for this category
                     prompt = `
                         Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions, covering a wide range of analytical skills.
                         For each question, provide:
@@ -664,17 +701,18 @@
                         6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                         7. Include the category name "${categoryTitle}" in a 'category' field.
                         
-                        The 7 questions should be of the following types, in this order:
+                        The 7 questions should be of the following types, in this specific order:
                         - Question 1 (Direct Question): Based on a historical document excerpt.
                         - Question 2 (Inference Question): Based on an excerpt from a literary text.
-                        - Question 3 (Main Idea Question): Based on an excerpt from a scientific journal.
-                        - Question 4 (Figure based Question): Based on a bar chart, line graph, or pie chart. The passage field should provide context for the data, and a new "graphic" field must contain a **complete and self-contained SVG string** for the chart. **Ensure the SVG is compact, and all text labels (titles, axes, data labels) are legible, do not overlap, are contained within the SVG's viewBox, and use the 'Inter, sans-serif' font family with a font-size of 12px to match the application's styling.** The SVG must be responsive, and all graphic components (bars, lines, slices) must use a color palette that excludes pure white and black.
+                        - Question 3 (Main Idea Question): Based on a short essay.
+                        - Question 4 (Figure based Question): Based on a bar chart, line graph, or pie chart. The passage field should provide context for the data, and a new "graphic" field must contain a **complete and self-contained SVG string** for the chart. The SVG should be compact, and all text labels (titles, axes, data labels) must be legible, not overlap, be contained within the SVG's viewBox, and use the 'Inter, sans-serif' font family with a font-size of 12px to match the application's styling. The SVG must be responsive, and all graphic components (bars, lines, slices) must use a color palette that excludes pure white and black. The font inside the SVG must be the same as the font of the answers.
                         - Question 5 (Strengthen Weaken Question): Based on a short argumentative essay.
                         - Question 6 (Poem based Question): Based on a short poem.
                         - Question 7 (Character Descriptions): Based on an an excerpt from a novel or a short story.
                     `;
                     break;
                 case "craft_structure":
+                    // UPDATED PROMPT: Requesting the specific types of questions for this category
                     prompt = `
                         Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions.
                         For each question, provide:
@@ -700,11 +738,11 @@
                     break;
                 case "expression_ideas":
                     prompt = `
-                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions. The questions must be split between Transition and Goal-based questions.
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions.
                         For each question, provide:
                         1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a student's essay draft or a research proposal. The passages should be fresh and not repeat previous topics.
                         2. A specific SAT-style question based on the passage. The questions must consist of:
-                           - **3-4 Transition Questions**: Asks for the most logical transition to connect a paragraph to a previous one or to a specific sentence within the paragraph.
+                           - **3-4 Transition Questions**: Asks for the most logical transition to connect a paragraph to a previous one or to a specific sentence within the paragraph. The part of the passage that requires a transition should be highlighted by enclosing it in double asterisks (e.g., **The phrase to be revised**).
                            - **3-4 Goal-based Questions**: Asks which revision of a sentence best achieves a specified goal, such as making a point more precise or establishing a clearer tone.
                         3. Four answer choices (A, B, C, D), one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
@@ -733,7 +771,7 @@
                         3. Four answer choices (A, B, C, D), one correct and three plausible distractors. One of the options must always be "NO CHANGE".
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
-                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                         7. Include the category name "${categoryTitle}" in a 'category' field.
                         
                         The part of the passage with the grammatical error should be highlighted by enclosing it in double asterisks (e.g., **phrase with error**).
@@ -786,6 +824,11 @@
         // Function to display a single question
         function displayQuestion(questionData, categoryTitle, isReview = false) {
             if (!questionData) return;
+
+            // NEW: Reset the question start time when a new question is displayed
+            if (!isReview) {
+                questionStartTime = Date.now();
+            }
 
             const questionCard = document.createElement('div');
             questionCard.className = isReview ? 'completed-test-details-question-card' : 'question-card';
@@ -881,10 +924,12 @@
 
                         const selectedLabel = this.dataset.label;
                         const correctAnswerLabel = this.dataset.correctAnswer;
+                        const timeTaken = (Date.now() - questionStartTime) / 1000; // NEW: Calculate time taken
 
                         const questionWithAnswer = {
                             ...questionData,
-                            user_answer: selectedLabel
+                            user_answer: selectedLabel,
+                            time_taken: timeTaken // NEW: Add time_taken to the question object
                         };
                         completedQuestions.push(questionWithAnswer);
                         
@@ -930,7 +975,10 @@
                 const sectionTitle = document.createElement('h2');
                 sectionTitle.className = 'text-2xl font-semibold text-gray-700 mb-6 section-title';
                 const romanNumeral = romanNumerals[currentCategoryIndex] || '';
-                sectionTitle.textContent = `${romanNumeral}. ${currentCategoryTitle} (Вопрос ${currentQuestionIndex + 1} из ${questionsInCurrentCategory.length})`;
+                const totalQuestions = isFullTest ? 28 : questionsInCurrentCategory.length;
+                const overallQuestionIndex = completedQuestions.length + 1;
+                
+                sectionTitle.textContent = `${romanNumeral}. ${currentCategoryTitle} (Вопрос ${overallQuestionIndex} из ${totalQuestions})`;
                 sectionDiv.appendChild(sectionTitle);
 
                 const questionData = questionsInCurrentCategory[currentQuestionIndex];
@@ -943,15 +991,14 @@
                 nextBtn.disabled = true;
                 nextBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 nextBtn.style.display = 'block';
-                saveAndExitBtn.style.display = 'block';
+                // Only show save/exit button if it's not a full test
+                saveAndExitBtn.style.display = isFullTest ? 'none' : 'block';
 
                 const isLastQuestion = (currentCategoryIndex === categoriesArray.length - 1 && currentQuestionIndex === questionsInCurrentCategory.length - 1);
                 if (isLastQuestion) {
                     nextBtn.textContent = 'Завершить тест';
-                    saveAndExitBtn.style.display = 'none';
                 } else {
                     nextBtn.textContent = 'Следующий вопрос';
-                    saveAndExitBtn.style.display = 'block';
                 }
             } else {
                 endQuiz(); 
@@ -965,16 +1012,18 @@
                 if (!wantsToContinue) {
                     return;
                 }
+                clearInterval(fullTestInterval);
             }
             
             const categoryTitle = Object.keys(categories).find(key => categories[key] === categoryKey);
-            showLoading(categoryTitle);
+            showLoading(`Генерация вопросов для "${categoryTitle}"...`);
             
             localStorage.removeItem('satQuizSession'); 
             completedQuestions = [];
 
             isSessionActive = true;
-            updateCompletedTestsBtnState();
+            isFullTest = false;
+            updateMainButtonsState(true);
 
             allGeneratedQuestions = {};
             currentCategoryIndex = 0;
@@ -998,7 +1047,73 @@
                 questionsContainer.innerHTML = `<p class="text-center text-red-600 text-lg">Не удалось сгенерировать вопросы для категории "${categoryTitle}". Пожалуйста, попробуйте еще раз.</p>`;
             }
         }
+        
+        // New function to handle full test generation
+        async function handleFullTest() {
+            if (isSessionActive) {
+                const wantsToContinue = await showCustomConfirm('В настоящий момент у вас активен тест. Хотите начать новый тест и отменить текущий?');
+                if (!wantsToContinue) {
+                    return;
+                }
+                clearInterval(fullTestInterval);
+            }
 
+            showLoading(`Генерация полного теста (28 вопросов)...`);
+
+            localStorage.removeItem('satQuizSession'); 
+            completedQuestions = [];
+            isSessionActive = true;
+            isFullTest = true;
+            updateMainButtonsState(true);
+
+            allGeneratedQuestions = {};
+            currentCategoryIndex = 0;
+            currentQuestionIndex = 0;
+            categoriesArray = Object.keys(categories);
+            
+            const selectedDifficulty = difficultySelect.value;
+            
+            try {
+                const generationPromises = Object.keys(categories).map(categoryTitle => 
+                    generateQuestionsForCategory(categoryTitle, categories[categoryTitle], selectedDifficulty)
+                );
+                const results = await Promise.all(generationPromises);
+                
+                hideLoading();
+
+                const hasError = results.some(result => !result);
+                if (hasError) {
+                    isSessionActive = false;
+                    isFullTest = false;
+                    updateMainButtonsState(false);
+                    questionsContainer.innerHTML = `<p class="text-center text-red-600 text-lg">Не удалось сгенерировать полный тест. Пожалуйста, попробуйте еще раз.</p>`;
+                    return;
+                }
+                
+                results.forEach((questions, index) => {
+                    const categoryTitle = categoriesArray[index];
+                    const categoryKey = categories[categoryTitle];
+                    allGeneratedQuestions[categoryKey] = questions;
+                });
+
+                // Set up the timer and display the first question
+                timeLeft = FULL_TEST_DURATION_SECONDS;
+                startFullTestTimer();
+
+                nextBtn.style.display = 'block';
+                saveAndExitBtn.style.display = 'none'; // Explicitly hide save button for full test
+                displayCurrentQuestion();
+                resetInactivityTimer();
+            } catch (error) {
+                console.error("Error generating full test:", error);
+                hideLoading();
+                isSessionActive = false;
+                isFullTest = false;
+                updateMainButtonsState(false);
+                questionsContainer.innerHTML = `<p class="text-center text-red-600 text-lg">Произошла непредвиденная ошибка при создании полного теста. Пожалуйста, попробуйте еще раз.</p>`;
+            }
+        }
+        
         // Function to handle navigation to the next question
         function handleNextQuestion() {
             const currentCategoryKey = categories[categoriesArray[currentCategoryIndex]];
@@ -1011,44 +1126,79 @@
             }
 
             if (currentCategoryIndex >= categoriesArray.length) {
-                endQuiz();
+                endQuiz(); 
             } else {
                 displayCurrentQuestion();
                 resetInactivityTimer();
             }
         }
         
-        // Function to handle quiz completion
-        function endQuiz() {
+        // Function to handle quiz completion (normal or timed out)
+        function endQuiz(timedOut = false) {
+            clearInterval(fullTestInterval);
+
             const completedTests = JSON.parse(localStorage.getItem('satCompletedTests') || '[]');
+            
+            // Calculate score for the current test
+            let correctCount = 0;
+            let totalTime = 0;
+            if (completedQuestions.length > 0) {
+                 completedQuestions.forEach(q => {
+                    if (q.user_answer === q.correct_answer) {
+                        correctCount++;
+                    }
+                    if (q.time_taken) {
+                        totalTime += q.time_taken;
+                    }
+                });
+            }
+            const averageTime = completedQuestions.length > 0 ? totalTime / completedQuestions.length : 0;
+
             const newCompletedTest = {
                 timestamp: new Date().toISOString(),
                 difficulty: difficultySelect.value,
-                questions: completedQuestions
+                questions: completedQuestions,
+                isFullTest: isFullTest,
+                timedOut: timedOut,
+                score: correctCount, // Store the score
+                averageTime: averageTime // NEW: Store the average time
             };
             completedTests.push(newCompletedTest);
             localStorage.setItem('satCompletedTests', JSON.stringify(completedTests));
             console.log('Completed test saved locally.');
             
             isSessionActive = false;
-            updateCompletedTestsBtnState();
+            isFullTest = false;
+            updateMainButtonsState(false);
             localStorage.removeItem('satQuizSession');
             completedQuestions = [];
             allGeneratedQuestions = {};
             categoriesArray = [];
 
-            questionsContainer.innerHTML = '<p class="text-center text-gray-600 text-lg">Тест завершен. Нажмите на кнопку категории, чтобы начать новый тест.</p>';
+            let completionMessage = `<p class="text-center text-gray-600 text-lg">Тест завершен. Нажмите на кнопку категории, чтобы начать новый тест.</p>`;
+            if (timedOut) {
+                completionMessage = `<p class="text-center text-red-600 text-lg font-semibold">Время истекло! Тест был завершен. Ваш прогресс сохранен.</p>`;
+            }
+
+            // Display score in the completion message if it's a full test
+            if (newCompletedTest.isFullTest) {
+                const totalQuestions = newCompletedTest.questions.length;
+                completionMessage += `<p class="text-center text-xl font-bold mt-4">Ваш результат: ${newCompletedTest.score} из ${totalQuestions} правильных ответов.</p>`;
+            }
+
+
+            questionsContainer.innerHTML = completionMessage;
             
             nextBtn.style.display = 'none';
             saveAndExitBtn.style.display = 'none';
             nextBtn.textContent = 'Следующий вопрос'; 
+            timerContainer.style.display = 'none';
             clearTimeout(inactivityTimer); 
-            
-            document.querySelectorAll('#categoryButtonsContainer button').forEach(button => {
-                button.disabled = false;
-                button.classList.remove('opacity-50', 'cursor-not-allowed');
-                button.classList.add('hover:bg-blue-700', 'hover:scale-105');
-            });
+        }
+
+        // Specific function for a timed-out quiz
+        function endQuizTimedOut() {
+            endQuiz(true);
         }
 
         // Function to handle saving and exiting the test
@@ -1073,12 +1223,18 @@
             }
 
             completedTests.reverse().forEach((test, index) => {
-                const categoryTitle = test.questions[0].category || 'Неизвестная категория';
+                const testType = test.isFullTest ? `Полный тест` : test.questions[0].category;
+                let scoreDisplay = '';
+                if (test.isFullTest && typeof test.score !== 'undefined') {
+                    scoreDisplay = `<p class="text-sm text-gray-600">Результат: ${test.score} из ${test.questions.length}</p>`;
+                }
                 const testCard = document.createElement('div');
                 testCard.className = 'completed-test-card';
                 testCard.innerHTML = `
-                    <p class="text-lg font-semibold text-gray-800">Тест (${categoryTitle}) от ${new Date(test.timestamp).toLocaleString('ru-RU')}</p>
+                    <p class="text-lg font-semibold text-gray-800">Тест (${testType}) от ${new Date(test.timestamp).toLocaleString('ru-RU')}</p>
                     <p class="text-sm text-gray-600">Сложность: ${test.difficulty === 'hard' ? 'Усложненный' : 'Облегченный'}</p>
+                    ${scoreDisplay}
+                    ${test.timedOut ? '<p class="text-xs text-red-500 font-bold">Тест завершен по истечении времени</p>' : ''}
                 `;
                 testCard.addEventListener('click', () => displayCompletedTestDetails(test));
                 testsListContainer.appendChild(testCard);
@@ -1094,8 +1250,25 @@
 
             const reviewTitle = document.createElement('h2');
             reviewTitle.className = 'text-3xl font-bold text-gray-800 mb-6';
-            reviewTitle.textContent = `Обзор теста от ${new Date(testData.timestamp).toLocaleString('ru-RU')}`;
+            const testType = testData.isFullTest ? 'Полный тест' : testData.questions[0].category;
+            reviewTitle.textContent = `Обзор теста (${testType}) от ${new Date(testData.timestamp).toLocaleString('ru-RU')}`;
             testReviewContainer.appendChild(reviewTitle);
+
+            // Display score at the top for full tests
+            if (testData.isFullTest && typeof testData.score !== 'undefined') {
+                const scoreElement = document.createElement('p');
+                scoreElement.className = 'text-2xl font-bold text-green-600 mb-2';
+                scoreElement.textContent = `Ваш результат: ${testData.score} из ${testData.questions.length} правильных ответов.`;
+                testReviewContainer.appendChild(scoreElement);
+                
+                // NEW: Display average time per question
+                if (typeof testData.averageTime !== 'undefined' && testData.averageTime > 0) {
+                    const avgTimeElement = document.createElement('p');
+                    avgTimeElement.className = 'text-lg font-medium text-gray-700 mb-6';
+                    avgTimeElement.textContent = `Среднее время на вопрос: ${testData.averageTime.toFixed(2)} сек.`;
+                    testReviewContainer.appendChild(avgTimeElement);
+                }
+            }
 
             const allQuestions = testData.questions;
             const categoriesMap = {};
@@ -1127,8 +1300,9 @@
                     
                     const userAnswerText = document.createElement('p');
                     const isCorrect = question.user_answer === question.correct_answer;
-                    userAnswerText.className = `user-answer ${isCorrect ? 'text-green-600' : 'text-red-600'}`;
-                    userAnswerText.innerHTML = `Ваш ответ: <span class="font-bold">${question.user_answer}</span> ${isCorrect ? '(Правильно)' : '(Неправильно)'}`;
+                    const userAnswerString = question.user_answer || 'Нет ответа';
+                    userAnswerText.className = `user-answer ${isCorrect ? 'text-green-600' : (question.user_answer ? 'text-red-600' : 'text-gray-500')}`;
+                    userAnswerText.innerHTML = `Ваш ответ: <span class="font-bold">${userAnswerString}</span> ${isCorrect ? '(Правильно)' : (question.user_answer ? '(Неправильно)' : '')}`;
 
                     const correctAnswerText = document.createElement('p');
                     correctAnswerText.className = 'font-medium text-green-600';
@@ -1136,6 +1310,15 @@
 
                     userAndCorrectAnswerDiv.appendChild(userAnswerText);
                     userAndCorrectAnswerDiv.appendChild(correctAnswerText);
+                    
+                    // NEW: Display time taken for this specific question
+                    if (question.time_taken) {
+                        const timeTakenText = document.createElement('p');
+                        timeTakenText.className = 'text-sm text-gray-500 mt-1';
+                        timeTakenText.textContent = `Время на вопрос: ${question.time_taken.toFixed(2)} сек.`;
+                        userAndCorrectAnswerDiv.appendChild(timeTakenText);
+                    }
+
 
                     testReviewContainer.appendChild(questionNumberText);
                     testReviewContainer.appendChild(questionCard);
@@ -1147,7 +1330,7 @@
         function backToMainScreen() {
             completedTestsScreen.style.display = 'none';
             appContent.style.display = 'block';
-            updateCompletedTestsBtnState();
+            updateMainButtonsState(isSessionActive);
         }
 
         function deleteCurrentTest() {
@@ -1179,6 +1362,7 @@
             }
         });
         saveAndExitBtn.addEventListener('click', handleSaveAndExit);
+        fullTestBtn.addEventListener('click', handleFullTest);
         
         showCompletedTestsBtn.addEventListener('click', showCompletedTests);
         backToTestsBtn.addEventListener('click', () => {
@@ -1193,7 +1377,7 @@
         if (savedSession) {
             isSessionActive = true;
         }
-        updateCompletedTestsBtnState();
+        updateMainButtonsState(isSessionActive);
     </script>
 </body>
 </html>
