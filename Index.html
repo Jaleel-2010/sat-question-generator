@@ -270,7 +270,7 @@
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 
         // ---------------------------------------------------------------------
-        // Исправлено: API ключ теперь использует ваш собственный ключ.
+        // Исправлено: Используется API-ключ, предоставленный пользователем.
         // ---------------------------------------------------------------------
         const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
         
@@ -894,32 +894,64 @@
             currentQuestionIndex = 0;
             categoriesArray = Object.keys(categories); // Update categories array
 
-            let allSuccessful = true;
-            for (const categoryTitle of categoriesArray) {
+            // Create an array of promises, one for each category
+            const generationPromises = categoriesArray.map(async (categoryTitle) => {
                 const categoryKey = categories[categoryTitle];
                 const selectedDifficulty = difficultySelect.value;
-                const questionsForCategory = await generateQuestionsForCategory(categoryTitle, categoryKey, selectedDifficulty);
-                
-                if (questionsForCategory && questionsForCategory.length > 0) {
-                    allGeneratedQuestions[categoryKey] = questionsForCategory;
-                } else {
-                    allSuccessful = false;
-                    const errorCard = document.createElement('div');
-                    errorCard.className = 'question-card bg-red-100 text-red-800';
-                    errorCard.textContent = `Не удалось сгенерировать вопросы для категории "${categoryTitle}". Пожалуйста, попробуйте еще раз.`;
-                    questionsContainer.appendChild(errorCard);
-                }
-            }
-            hideLoading(); // Hide loading indicator after all generations are complete
+                // The generateQuestionsForCategory function already handles retries and returns null on failure
+                return generateQuestionsForCategory(categoryTitle, categoryKey, selectedDifficulty);
+            });
 
-            if (allSuccessful && categoriesArray.length > 0 && allGeneratedQuestions[categories[categoriesArray[0]]]) {
-                nextBtn.style.display = 'block'; // Show next button
-                saveAndExitBtn.style.display = 'block'; // Show save and exit button (will be hidden on last question by displayCurrentQuestion)
-                displayCurrentQuestion(); // Display the first question
-                resetInactivityTimer(); // Reset timer after generation
-            } else {
-                nextBtn.style.display = 'none'; // Hide next button if generation failed
-                saveAndExitBtn.style.display = 'none'; // Hide save and exit button if generation failed
+            try {
+                // Wait for all promises to resolve in parallel
+                const results = await Promise.all(generationPromises);
+                let allSuccessful = true;
+                
+                // Process the results
+                results.forEach((questionsForCategory, index) => {
+                    const categoryTitle = categoriesArray[index];
+                    const categoryKey = categories[categoryTitle];
+                    if (questionsForCategory && questionsForCategory.length > 0) {
+                        allGeneratedQuestions[categoryKey] = questionsForCategory;
+                    } else {
+                        allSuccessful = false;
+                        // Add a visual error card for the user for the failed category
+                        const errorCard = document.createElement('div');
+                        errorCard.className = 'question-card bg-red-100 text-red-800';
+                        errorCard.textContent = `Не удалось сгенерировать вопросы для категории "${categoryTitle}". Пожалуйста, попробуйте еще раз.`;
+                        questionsContainer.appendChild(errorCard);
+                    }
+                });
+
+                hideLoading(); // Hide loading indicator after all generations are complete
+
+                if (allSuccessful && categoriesArray.length > 0) {
+                    // Check if the first category has questions, as a minimal check to start the quiz
+                    if (allGeneratedQuestions[categories[categoriesArray[0]]]) {
+                        nextBtn.style.display = 'block';
+                        saveAndExitBtn.style.display = 'block';
+                        displayCurrentQuestion(); // Display the first question
+                        resetInactivityTimer(); // Reset timer after generation
+                    } else {
+                         // This case would be hit if some generations failed, but the first one was successful,
+                         // but we handle all failures in the forEach loop above and set allSuccessful to false.
+                         nextBtn.style.display = 'none';
+                         saveAndExitBtn.style.display = 'none';
+                    }
+                } else {
+                    // All generations failed or some failed, so we can't start the quiz
+                    nextBtn.style.display = 'none';
+                    saveAndExitBtn.style.display = 'none';
+                }
+
+            } catch (error) {
+                // This catch block will only be triggered if Promise.all rejects,
+                // which means at least one of the promises failed catastrophically.
+                console.error("An error occurred during parallel question generation:", error);
+                loadingIndicator.innerHTML = `<p class='text-red-600'>Произошла общая ошибка при генерации вопросов. Пожалуйста, попробуйте еще раз.</p>`;
+                hideLoading();
+                nextBtn.style.display = 'none';
+                saveAndExitBtn.style.display = 'none';
             }
         }
 
