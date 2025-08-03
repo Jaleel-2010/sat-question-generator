@@ -227,6 +227,13 @@
             </svg>
             <span id="fullTestTimer"></span>
         </div>
+        
+        <!-- NEW: Exclusion Topics input field -->
+        <div class="mb-6 p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+            <label for="exclusionTopics" class="block text-gray-700 text-sm font-bold mb-2">Исключить темы (через запятую):</label>
+            <textarea id="exclusionTopics" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-blue-500" placeholder="Например: 'Вторая мировая война, глобальное потепление, биография Эйнштейна'"></textarea>
+        </div>
+
 
         <div class="mb-6">
             <label for="difficultySelect" class="block text-gray-700 text-sm font-bold mb-2">Выберите уровень сложности:</label>
@@ -258,11 +265,11 @@
         </div>
 
         <div class="flex flex-col sm:flex-row justify-between gap-4 mt-4">
-            <button id="saveAndExitBtn" class="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75" style="display: none;">
-                Сохранить и выйти
-            </button>
             <button id="nextBtn" class="w-full sm:w-1/2 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75" style="display: none;">
                 Следующий вопрос
+            </button>
+            <button id="saveAndExitBtn" class="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75" style="display: none;">
+                Сохранить и выйти
             </button>
         </div>
     </div>
@@ -298,7 +305,7 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 
-        const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
+        const apiKey = ""; // Canvas will automatically provide the API key
         
         // Initialize Google Generative AI
         const genAI = new GoogleGenerativeAI(apiKey);
@@ -327,6 +334,9 @@
         const deleteTestBtn = document.getElementById('deleteTestBtn');
         const timerContainer = document.getElementById('timerContainer');
         const fullTestTimer = document.getElementById('fullTestTimer');
+        
+        // NEW: Exclusion topics textarea
+        const exclusionTopicsInput = document.getElementById('exclusionTopics');
 
         const categories = {
             "Information and Ideas": "information_ideas",
@@ -343,9 +353,9 @@
         let currentCategoryIndex = 0;
         let currentQuestionIndex = 0;
         let isSessionActive = false;
-        let isFullTest = false; // New state variable
+        let isFullTest = false; 
         let currentReviewingTest = null;
-        let questionStartTime = 0; // NEW: Timer for individual questions
+        let questionStartTime = 0; 
 
         // Hardcoded password for client-side authentication
         const CORRECT_PASSWORD = "Jaleel2010";
@@ -360,7 +370,7 @@
 
         // Full Test timer variables - UPDATED
         let fullTestInterval;
-        const FULL_TEST_DURATION_MINUTES = 30; // UPDATED to 30 minutes
+        const FULL_TEST_DURATION_MINUTES = 30; 
         const FULL_TEST_DURATION_SECONDS = FULL_TEST_DURATION_MINUTES * 60;
         let timeLeft = FULL_TEST_DURATION_SECONDS;
 
@@ -634,7 +644,7 @@
         }
 
         // Function to generate multiple questions for a given category with exponential backoff
-        async function generateQuestionsForCategory(categoryTitle, categoryKey, difficulty, retries = 0) {
+        async function generateQuestionsForCategory(categoryTitle, categoryKey, difficulty, excludedTopics, retries = 0) {
             const MAX_RETRIES = 5;
             const BASE_DELAY_MS = 1000;
             
@@ -646,6 +656,9 @@
             const wordCountRange = difficulty === 'hard' ? '60-80' : '40-60';
             const analyticalSkill = difficulty === 'hard' ? 'deep analytical skills' : 'basic comprehension';
             const rhetoricalEffect = difficulty === 'hard' ? 'advanced rhetorical effect' : 'clear and concise expression';
+            
+            // NEW: Add excluded topics to the prompt
+            const excludeText = excludedTopics && excludedTopics.length > 0 ? `Explicitly avoid passages and questions on the following topics: ${excludedTopics.join(', ')}.` : '';
 
             // Define the JSON schema for the expected output
             const responseSchema = {
@@ -681,7 +694,7 @@
                             }
                         },
                         category: { type: "STRING" },
-                        graphic: { type: "STRING" } // NEW: Add a field for the SVG graphic
+                        graphic: { type: "STRING" }
                     },
                     required: ["passage", "question", "options", "correct_answer", "explanation", "category"]
                 }
@@ -689,76 +702,76 @@
             
             switch (categoryKey) {
                 case "information_ideas":
-                    // UPDATED PROMPT: Questions and options must be in English
+                    // UPDATED PROMPT: More specific source material instructions and excluded topics
                     prompt = `
-                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, covering a wide range of analytical skills.
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, each based on a new and distinct topic. ${excludeText}
                         For each question, provide:
-                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic. Passages should be fresh and not repeat previous topics.
+                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic. Passages must be fresh and not repeat previous topics within this generation request.
                         2. A specific SAT-style question in English based on the passage, designed to test a particular skill.
                         3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
-                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                         7. Include the category name "${categoryTitle}" in a 'category' field.
                         
-                        The 7 questions should be of the following types, in this specific order:
-                        - Question 1 (Direct Question): Based on a historical document excerpt.
-                        - Question 2 (Inference Question): Based on an excerpt from a literary text.
-                        - Question 3 (Main Idea Question): Based on a short essay.
-                        - Question 4 (Figure based Question): Based on a bar chart, line graph, or pie chart. The passage field should provide context for the data, and a new "graphic" field must contain a **complete and self-contained SVG string** for the chart. The SVG should be compact, and all text labels (titles, axes, data labels) must be legible, not overlap, be contained within the SVG's viewBox, and use the 'Inter, sans-serif' font family with a font-size of 12px to match the application's styling. The SVG must be responsive, and all graphic components (bars, lines, slices) must use a color palette that excludes pure white and black. The font inside the SVG must be the same as the font of the answers.
-                        - Question 5 (Strengthen Weaken Question): Based on a short argumentative essay.
-                        - Question 6 (Poem based Question): Based on a short poem.
-                        - Question 7 (Character Descriptions): Based on an an excerpt from a novel or a short story.
+                        The 7 questions should be of the following types, each with a unique source material and topic, explicitly avoiding the excluded topics:
+                        - Question 1 (Direct Question): Based on an excerpt from an 18th-century philosophical text.
+                        - Question 2 (Inference Question): Based on an excerpt from a 20th-century American novel.
+                        - Question 3 (Main Idea Question): Based on a short essay about a recent astronomical discovery.
+                        - Question 4 (Figure based Question): Based on a bar chart, line graph, or pie chart illustrating a historical demographic trend. The passage field should provide context for the data, and a new "graphic" field must contain a **complete and self-contained SVG string** for the chart. The SVG should be compact, and all text labels (titles, axes, data labels) must be legible, not overlap, be contained within the SVG's viewBox, and use the 'Inter, sans-serif' font family with a font-size of 12px to match the application's styling. The SVG must be responsive, and all graphic components (bars, lines, slices) must use a color palette that excludes pure white and black. The font inside the SVG must be the same as the font of the answers.
+                        - Question 5 (Strengthen Weaken Question): Based on a short argumentative essay on an ethical issue concerning artificial intelligence.
+                        - Question 6 (Poem based Question): Based on a short contemporary poem.
+                        - Question 7 (Character Descriptions): Based on an an excerpt from a biography of a historical figure.
                     `;
                     break;
                 case "craft_structure":
-                    // UPDATED PROMPT: Questions and options must be in English
+                    // UPDATED PROMPT: More specific source material instructions and excluded topics
                     prompt = `
-                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English.
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, each based on a new and distinct topic. ${excludeText}
                         For each question, provide:
-                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic. For Cross-text Connection questions, provide two distinct, short passages. The passages should be fresh and not repeat previous topics.
+                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic. For Cross-text Connection questions, provide two distinct, short passages. The passages must be fresh and not repeat previous topics within this generation request.
                         2. A specific SAT-style question in English based on the passage(s).
                         3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
-                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                         7. Include the category name "${categoryTitle}" in a 'category' field.
 
-                        The 7 questions should be of the following types, ensuring a good mix across the list:
-                        - Vocabulary in Context
-                        - Primary Purpose Questions
-                        - Purpose of a portion Questions
-                        - Structure Questions
-                        - Cross-text Connection Questions (must include two passages)
-                        - Quotes Illustrate Questions
-                        - A seventh question which is a duplicate of one of the above types.
+                        The 7 questions should be of the following types, ensuring a good mix across the list and using unique topics, explicitly avoiding the excluded topics:
+                        - Vocabulary in Context (from a text about a specific art movement)
+                        - Primary Purpose Questions (from an excerpt of a scientific research summary)
+                        - Purpose of a portion Questions (from a philosophical text on logic)
+                        - Structure Questions (from a detailed guide on computer programming)
+                        - Cross-text Connection Questions (two passages on differing interpretations of a myth)
+                        - Quotes Illustrate Questions (from an analysis of a psychological concept)
+                        - A seventh question which is a duplicate of one of the above types, but with a different topic.
                         
                         For "Vocabulary in Context" and "Purpose of a portion" questions, highlight the specific word, phrase, or sentence in the passage by enclosing it in double asterisks (e.g., **word**).
                     `;
                     break;
                 case "expression_ideas":
-                    // UPDATED PROMPT: Questions and options must be in English
+                    // UPDATED PROMPT: More specific source material instructions and excluded topics
                     prompt = `
-                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English.
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, each based on a new and distinct topic. ${excludeText}
                         For each question, provide:
-                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a student's essay draft or a research proposal. The passages should be fresh and not repeat previous topics.
+                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a student's essay draft about the social impact of a new technology, an analysis of a classic piece of music, or a research proposal on a historical event. The passages must be fresh and not repeat previous topics within this generation request.
                         2. A specific SAT-style question in English based on the passage. The questions must consist of:
                            - **3-4 Transition Questions**: Asks for the most logical transition to connect a paragraph to a previous one or to a specific sentence within the paragraph. The part of the passage that requires a transition should be highlighted by enclosing it in double asterisks (e.g., **The phrase to be revised**).
                            - **3-4 Goal-based Questions**: Asks which revision of a sentence best achieves a specified goal, such as making a point more precise or establishing a clearer tone.
                         3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
-                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9th-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                         7. Include the category name "${categoryTitle}" in a 'category' field.
                         
                         For "Transition Questions" and "Goal-based Questions", highlight the relevant part of the passage that needs revision by enclosing it in double asterisks (e.g., **The phrase to be revised**).
                     `;
                     break;
                 case "standard_english_conventions":
-                    // UPDATED PROMPT: Questions and options must be in English
+                    // UPDATED PROMPT: More specific source material instructions and excluded topics
                     prompt = `
-                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English. For each question, provide:
-                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a historical account, a technical manual, or a biographical sketch. Each passage must contain a specific grammatical or punctuation error. The passages should be fresh and not repeat previous topics.
+                        Generate ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, each based on a new and distinct topic. ${excludeText} For each question, provide:
+                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a historical account of a battle, a technical manual for a tool, or a biographical sketch of an artist. Each passage must contain a specific grammatical or punctuation error. The passages must be fresh and not repeat previous topics within this generation request.
                         2. A SAT-style question in English that asks the user to correct the error. The questions must cover a variety of the following rules:
                            - Subject-verb agreement
                            - Subject pronoun agreement
@@ -802,7 +815,7 @@
                     const delay = BASE_DELAY_MS * Math.pow(2, retries) + (Math.random() * 100);
                     console.warn(`Retrying ${categoryTitle} question generation in ${delay}ms (retry ${retries + 1}/${MAX_RETRIES})...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
-                    return generateQuestionsForCategory(categoryTitle, categoryKey, difficulty, retries + 1);
+                    return generateQuestionsForCategory(categoryTitle, categoryKey, difficulty, excludedTopics, retries + 1);
                 }
 
                 let errorMessage = `<p class='text-red-600'>Произошла ошибка при генерации вопросов для категории "${categoryTitle}" (Уровень: ${difficulty === 'hard' ? 'Усложненный' : 'Облегченный'}). Пожалуйста, попробуйте еще раз.</p>`;
@@ -925,12 +938,12 @@
 
                         const selectedLabel = this.dataset.label;
                         const correctAnswerLabel = this.dataset.correctAnswer;
-                        const timeTaken = (Date.now() - questionStartTime) / 1000; // NEW: Calculate time taken
+                        const timeTaken = (Date.now() - questionStartTime) / 1000; 
 
                         const questionWithAnswer = {
                             ...questionData,
                             user_answer: selectedLabel,
-                            time_taken: timeTaken // NEW: Add time_taken to the question object
+                            time_taken: timeTaken 
                         };
                         completedQuestions.push(questionWithAnswer);
                         
@@ -1030,9 +1043,12 @@
             currentCategoryIndex = 0;
             currentQuestionIndex = 0;
             categoriesArray = [categoryTitle]; // Set the active category
+            
+            // NEW: Get excluded topics from the input field
+            const excludedTopics = exclusionTopicsInput.value.split(',').map(topic => topic.trim()).filter(Boolean);
 
             const selectedDifficulty = difficultySelect.value;
-            const questionsForCategory = await generateQuestionsForCategory(categoryTitle, categoryKey, selectedDifficulty);
+            const questionsForCategory = await generateQuestionsForCategory(categoryTitle, categoryKey, selectedDifficulty, excludedTopics);
 
             hideLoading();
 
@@ -1073,10 +1089,12 @@
             categoriesArray = Object.keys(categories);
             
             const selectedDifficulty = difficultySelect.value;
+            // NEW: Get excluded topics from the input field
+            const excludedTopics = exclusionTopicsInput.value.split(',').map(topic => topic.trim()).filter(Boolean);
             
             try {
                 const generationPromises = Object.keys(categories).map(categoryTitle => 
-                    generateQuestionsForCategory(categoryTitle, categories[categoryTitle], selectedDifficulty)
+                    generateQuestionsForCategory(categoryTitle, categories[categoryTitle], selectedDifficulty, excludedTopics)
                 );
                 const results = await Promise.all(generationPromises);
                 
@@ -1197,7 +1215,7 @@
                 isFullTest: isFullTest,
                 timedOut: timedOut,
                 score: correctCount, // Store the score
-                averageTime: averageTime // NEW: Store the average time
+                averageTime: averageTime // Store the average time
             };
             completedTests.push(newCompletedTest);
             localStorage.setItem('satCompletedTests', JSON.stringify(completedTests));
