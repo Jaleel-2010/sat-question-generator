@@ -306,7 +306,13 @@
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
 
+        // ---------------------------------------------------------------------------------------------------
+        // ВАЖНО: Если вы запускаете этот код вне среды Canvas (например, на Netlify),
+        // вам нужно вставить свой собственный ключ API.
+        // Замените пустую строку на ваш ключ API, полученный из Google AI Studio Console.
+        // Пример: const apiKey = "YOUR_API_KEY_HERE";
         const apiKey = "API AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
+        // ---------------------------------------------------------------------------------------------------
         
         // Initialize Google Generative AI
         const genAI = new GoogleGenerativeAI(apiKey);
