@@ -911,20 +911,19 @@
                     `;
                     break;
                 case "expression_ideas":
-                    // UPDATED PROMPT: Now explicitly uses the blank line for transition questions
-                    // to better match the user's example.
+                    // UPDATED PROMPT: Now requests a specific number of vocabulary words
                     prompt = `
                         Generate exactly ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, each based on a new and distinct topic, such as a student's essay draft about the social impact of a new technology, an analysis of a classic piece of music, or a research proposal on a historical event. The passages must be fresh and not repeat previous topics within this generation request.
-                        For each question, provide:
-                        1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic.
                         2. A specific SAT-style question in English based on the passage. The questions must consist of:
-                           - **3-4 Transition Questions**: These questions ask for the most logical transition to connect a paragraph to a previous one or to a specific sentence within the paragraph. The blank space for the transition word or phrase must be represented by exactly three underscores (e.g., ___).
-                           - **3-4 Goal-based Questions**: These questions ask which revision of a sentence best achieves a specified goal, such as making a point more precise or establishing a clearer tone. The part of the passage to be revised must be highlighted by enclosing it in double asterisks (e.g., **The phrase to be revised**).
+                           - **3-4 Transition Questions**: Asks for the most logical transition to connect a paragraph to a previous one or to a specific sentence within the paragraph. The part of the passage that requires a transition should be highlighted by enclosing it in double asterisks (e.g., **The phrase to be revised**).
+                           - **3-4 Goal-based Questions**: Asks which revision of a sentence best achieves a specified goal, such as making a point more precise or establishing a clearer tone.
                         3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
                         6. Identify exactly ${vocabCount} English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a comma-separated list of 2-3 English synonyms in a 'vocabulary' array.
                         7. Include the category name "${categoryTitle}" in a 'category' field.
+                        
+                        For "Transition Questions" and "Goal-based Questions", highlight the relevant part of the passage that needs revision by enclosing it in double asterisks (e.g., **The phrase to be revised**).
                     `;
                     break;
                 case "standard_english_conventions":
