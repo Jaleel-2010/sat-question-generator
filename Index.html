@@ -339,6 +339,7 @@
     <script type="module">
         const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
         
+        // --- Get all the DOM elements
         const loginScreen = document.getElementById('loginScreen');
         const passwordInput = document.getElementById('passwordInput');
         const loginBtn = document.getElementById('loginBtn');
@@ -346,7 +347,6 @@
         const appContent = document.getElementById('appContent');
         const categoryButtonsContainer = document.getElementById('categoryButtonsContainer');
         const fullTestBtn = document.getElementById('fullTestBtn');
-
         const questionsContainer = document.getElementById('questionsContainer');
         const showCompletedTestsBtn = document.getElementById('showCompletedTestsBtn');
         const completedTestsScreen = document.getElementById('completedTestsScreen');
@@ -369,7 +369,8 @@
         const topicInput = document.getElementById('topicInput');
         const addTopicBtn = document.getElementById('addTopicBtn');
         const excludedTopicsList = document.getElementById('excludedTopicsList');
-        const cancelExcludeBtn = document.getElementById('cancelExcludeBtn');
+        // FIX: Renamed variable to avoid conflict with global 'document' object
+        const cancelExcludeBtnEl = document.getElementById('cancelExcludeBtn');
 
         const categories = {
             "Information and Ideas": "information_ideas",
@@ -390,8 +391,8 @@
         let currentReviewingTest = null;
         let questionStartTime = 0; 
 
-        // Hardcoded password for client-side authentication
-        const CORRECT_PASSWORD = "Jaleel2010";
+        // Hardcoded password array for client-side authentication
+        const CORRECT_PASSWORDS = ["Jaleel2010", "AnotherPassword", "ThirdPassword"];
 
         // Inactivity timer variables
         let inactivityTimer;
@@ -607,7 +608,7 @@
 
         // Login function
         loginBtn.addEventListener('click', async () => {
-            if (passwordInput.value === CORRECT_PASSWORD) {
+            if (CORRECT_PASSWORDS.includes(passwordInput.value)) {
                 loginScreen.style.display = 'none';
                 appContent.style.display = 'block';
                 loginError.style.display = 'none';
@@ -743,7 +744,8 @@
             excludeTopicsModal.classList.remove('hidden');
         });
 
-        cancelExcludeBtn.addEventListener('click', () => {
+        // FIX: Use the correct variable name
+        cancelExcludeBtnEl.addEventListener('click', () => {
             excludeTopicsModal.classList.add('hidden');
         });
         
