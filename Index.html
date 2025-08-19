@@ -464,6 +464,10 @@
         // Initialize Firebase on window load
         window.onload = function() {
             try {
+                // Check if firebaseConfig is valid and not empty
+                if (!firebaseConfig || Object.keys(firebaseConfig).length === 0) {
+                    throw new Error("Firebase config is empty or invalid.");
+                }
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -476,7 +480,11 @@
                     } else {
                         // User is signed out. Sign in anonymously.
                         try {
-                            await signInAnonymously(auth);
+                            if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
                         } catch (error) {
                             console.error("Firebase authentication failed:", error);
                         }
@@ -495,6 +503,8 @@
                             <p class="mt-2 text-sm text-red-600">Пожалуйста, проверьте консоль разработчика для получения подробной информации об ошибке.</p>
                         </div>
                     `;
+                    appContent.style.display = 'block'; // Make sure the error message is visible
+                    loginScreen.style.display = 'none';
                 }
             }
         };
