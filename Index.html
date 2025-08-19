@@ -375,24 +375,15 @@
         import { getFirestore, doc, setDoc, deleteDoc, collection, query, onSnapshot, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // ===================================================================================================
-        // === ВАЖНО: ЭТО ВАША КОНФИГУРАЦИЯ FIREBASE, ПРЕДОСТАВЛЕННАЯ РАНЕЕ ===========================
-        // === Не удаляйте эти данные. Если вы хотите поделиться этим кодом, замените их на заполнители. ===
+        // === ИСПОЛЬЗУЙТЕ ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ, ПРЕДОСТАВЛЕННЫЕ СРЕДОЙ (НЕ ИЗМЕНЯЙТЕ ИХ) ===================
         // ===================================================================================================
-        const firebaseConfig = {
-          apiKey: "AIzaSyBF1CIivfHlX8O1a3bFO8aIEHwwdTxnUtA",
-          authDomain: "jaleels-verbalsat-generator.firebaseapp.com",
-          projectId: "jaleels-verbalsat-generator",
-          storageBucket: "jaleels-verbalsat-generator.firebasestorage.app",
-          messagingSenderId: "274566149454",
-          appId: "1:274566149454:web:094849957d81ec3af91a1f",
-          measurementId: "G-4RG9BE0BB3"
-        };
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const apiKey = typeof __api_key !== 'undefined' ? __api_key : "";
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         // ===================================================================================================
-        // === НЕ МЕНЯЙТЕ НИЧЕГО НИЖЕ ЭТОЙ СТРОКИ =============================================================
         // ===================================================================================================
 
-        const apiKey = "AIzaSyB6HddnRBVrrDWv_ujKlFx7ZQST1RzvcZs";
-        
         // Get all the DOM elements
         const loginScreen = document.getElementById('loginScreen');
         const passwordInput = document.getElementById('passwordInput');
@@ -470,9 +461,6 @@
         
         // --- Firebase Initialization and Auth ---
         
-        // The ID for your app. For GitHub, you can use a fixed string.
-        const appId = "jaleels-verbal-sat-generator-github";
-
         // Initialize Firebase on window load
         window.onload = function() {
             try {
