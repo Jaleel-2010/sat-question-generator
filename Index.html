@@ -769,20 +769,7 @@
                 renderExcludedTopicsList();
             }
         });
-        
-        // Helper function to get the correct number of vocabulary words
-        function getVocabCount(difficulty) {
-            switch(difficulty) {
-                case 'easy':
-                    return 4;
-                case 'hard':
-                    return 6;
-                case 'gre_gmat':
-                    return 8;
-                default:
-                    return 4; // Default to easy
-            }
-        }
+
 
         // Function to generate multiple questions for a given category with exponential backoff
         // ИСПРАВЛЕНО: Эта функция теперь использует прямой вызов 'fetch' вместо
@@ -794,7 +781,6 @@
             
             // ИСПРАВЛЕНО: Запросить ровно 7 вопросов, чтобы избежать ошибок с индексацией
             const numberOfQuestions = 7; 
-            const vocabCount = getVocabCount(difficulty);
 
             // NEW: Get excluded topics directly from local storage
             const excludedTopics = getExcludedTopics();
@@ -839,7 +825,6 @@
                         },
                         correct_answer: { type: "STRING" },
                         explanation: { type: "STRING" },
-                        // UPDATED SCHEMA: Now includes synonyms
                         vocabulary: {
                             type: "ARRAY",
                             items: {
@@ -847,9 +832,9 @@
                                 properties: {
                                     word: { "type": "STRING" },
                                     translation: { "type": "STRING" },
-                                    synonyms: { "type": "STRING" },
+                                    explanation: { "type": "STRING" }
                                 },
-                                required: ["word", "translation", "synonyms"]
+                                required: ["word", "translation", "explanation"]
                             }
                         },
                         category: { type: "STRING" },
@@ -861,7 +846,7 @@
             
             switch (categoryKey) {
                 case "information_ideas":
-                    // UPDATED PROMPT: Now requests a specific number of vocabulary words
+                    // UPDATED PROMPT: More specific source material instructions and excluded topics
                     prompt = `
                         Generate exactly ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, each based on a new and distinct topic. ${excludeText}
                         For each question, provide:
@@ -870,7 +855,7 @@
                         3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
-                        6. Identify exactly ${vocabCount} English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a comma-separated list of 2-3 English synonyms in a 'vocabulary' array.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                         7. Include the category name "${categoryTitle}" in a 'category' field.
                         
                         The ${numberOfQuestions} questions should be of the following types, each with a unique source material and topic, explicitly avoiding the excluded topics:
@@ -884,7 +869,7 @@
                     `;
                     break;
                 case "craft_structure":
-                    // UPDATED PROMPT: Now requests a specific number of vocabulary words
+                    // UPDATED PROMPT: More specific source material instructions and excluded topics
                     prompt = `
                         Generate exactly ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, each based on a new and distinct topic. ${excludeText}
                         For each question, provide:
@@ -893,7 +878,7 @@
                         3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
-                        6. Identify exactly ${vocabCount} English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a comma-separated list of 2-3 English synonyms in a 'vocabulary' array.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                         7. Include the category name "${categoryTitle}" in a 'category' field.
 
                         The ${numberOfQuestions} questions should be of the following types, ensuring a good mix across the list and using unique topics, explicitly avoiding the excluded topics:
@@ -909,7 +894,7 @@
                     `;
                     break;
                 case "expression_ideas":
-                    // UPDATED PROMPT: Now requests a specific number of vocabulary words
+                    // UPDATED PROMPT: More specific source material instructions and excluded topics
                     prompt = `
                         Generate exactly ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, each based on a new and distinct topic. ${excludeText}
                         For each question, provide:
@@ -920,14 +905,14 @@
                         3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors.
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
-                        6. Identify exactly ${vocabCount} English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a comma-separated list of 2-3 English synonyms in a 'vocabulary' array.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                         7. Include the category name "${categoryTitle}" in a 'category' field.
                         
                         For "Transition Questions" and "Goal-based Questions", highlight the relevant part of the passage that needs revision by enclosing it in double asterisks (e.g., **The phrase to be revised**).
                     `;
                     break;
                 case "standard_english_conventions":
-                    // UPDATED PROMPT: Now requests a specific number of vocabulary words
+                    // UPDATED PROMPT: More specific source material instructions and excluded topics
                     prompt = `
                         Generate exactly ${numberOfQuestions} unique and diverse SAT-style "${categoryTitle}" questions in English, each based on a new and distinct topic. ${excludeText} For each question, provide:
                         1. A short, ${difficultyModifier} passage (${wordCountRange} words) on a distinct topic, such as a historical account of a battle, a technical manual for a tool, or a biographical sketch of an artist. Each passage must contain a specific grammatical or punctuation error. The passages must be fresh and not repeat previous topics within this generation request.
@@ -944,7 +929,7 @@
                         3. Four answer choices (A, B, C, D) in English, one correct and three plausible distractors. One of the options must always be "NO CHANGE".
                         4. The correct answer label (e.g., "A").
                         5. A brief explanation in Russian for the correct answer.
-                        6. Identify exactly ${vocabCount} English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a comma-separated list of 2-3 English synonyms in a 'vocabulary' array.
+                        6. Identify 4-5 English words from the passage that would likely be rare or complex for a 9-grade student in a Russian-language secondary school. For each identified word, provide its exact English form, its Russian translation, and a brief Russian explanation of its meaning in a 'vocabulary' array.
                         7. Include the category name "${categoryTitle}" in a 'category' field.
                         
                         The part of the passage with the grammatical error should be highlighted by enclosing it in double asterisks (e.g., **phrase with error**).
@@ -1223,25 +1208,13 @@
             const passageParagraph = document.createElement('p');
             passageParagraph.className = 'question-passage';
             // Use regex to find `**word**` patterns and wrap them in a tooltip container
-            let passageWithTooltips = currentQuestionData.passage;
-
-            if (currentQuestionData.vocabulary && !isFullTest) {
-                // Create a regular expression to match all words in the vocabulary list
-                const wordsToMatch = currentQuestionData.vocabulary.map(v => v.word).join('|');
-                const regex = new RegExp(`\\b(${wordsToMatch})\\b`, 'g');
-                
-                passageWithTooltips = passageWithTooltips.replace(regex, (match) => {
-                    const vocab = currentQuestionData.vocabulary.find(v => v.word === match);
-                    if (vocab) {
-                        return `<span class="tooltip-container">${match}<span class="tooltip-text">Перевод: ${vocab.translation}<br>Синонимы: ${vocab.synonyms}</span></span>`;
-                    }
-                    return match;
-                });
-            }
-            
-            // Now handle the double-asterisk highlighting for grammar/context questions
-            passageWithTooltips = passageWithTooltips.replace(/\*\*(.*?)\*\*/g, (match, word) => `<span class="bg-yellow-200 p-1 rounded">${word}</span>`);
-            
+            const passageWithTooltips = currentQuestionData.passage.replace(/\*\*(.*?)\*\*/g, (match, word) => {
+                const vocab = (currentQuestionData.vocabulary || []).find(v => v.word === word);
+                if (vocab) {
+                    return `<span class="tooltip-container">${word}<span class="tooltip-text">${vocab.translation}: ${vocab.explanation}</span></span>`;
+                }
+                return word;
+            });
             passageParagraph.innerHTML = passageWithTooltips;
             questionCard.appendChild(passageParagraph);
 
@@ -1467,20 +1440,14 @@
                 const reviewCard = document.createElement('div');
                 reviewCard.className = 'completed-test-details-question-card';
                 
-                let passageContent = q.questionData.passage;
-                if (q.questionData.vocabulary) {
-                    const wordsToMatch = q.questionData.vocabulary.map(v => v.word).join('|');
-                    const regex = new RegExp(`\\b(${wordsToMatch})\\b`, 'g');
-                    passageContent = passageContent.replace(regex, (match) => {
-                        const vocab = q.questionData.vocabulary.find(v => v.word === match);
-                        if (vocab) {
-                            return `<span class="tooltip-container">${match}<span class="tooltip-text">Перевод: ${vocab.translation}<br>Синонимы: ${vocab.synonyms}</span></span>`;
-                        }
-                        return match;
-                    });
-                }
-                
-                const passageWithHighlights = passageContent.replace(/\*\*(.*?)\*\*/g, (match, word) => `<span class="bg-yellow-200 p-1 rounded">${word}</span>`);
+                // Construct the passage with tooltips and highlights for review
+                const passageWithHighlights = q.questionData.passage.replace(/\*\*(.*?)\*\*/g, (match, word) => {
+                    const vocab = (q.questionData.vocabulary || []).find(v => v.word === word);
+                    if (vocab) {
+                        return `<span class="tooltip-container">${word}<span class="tooltip-text">${vocab.translation}: ${vocab.explanation}</span></span>`;
+                    }
+                    return `<span class="bg-yellow-200 p-1 rounded">${word}</span>`; // Highlight words if they are not in vocabulary
+                });
 
                 reviewCard.innerHTML = `
                     <p class="font-bold text-lg mb-2 text-gray-800">Вопрос ${index + 1} (${q.questionData.category})</p>
