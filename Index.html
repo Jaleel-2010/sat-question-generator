@@ -388,7 +388,7 @@
         // === НЕ МЕНЯЙТЕ НИЧЕГО НИЖЕ ЭТОЙ СТРОКИ =============================================================
         // ===================================================================================================
 
-        const apiKey = "";
+        const apiKey = firebaseConfig.apiKey;
         
         // Get all the DOM elements
         const loginScreen = document.getElementById('loginScreen');
@@ -1439,12 +1439,11 @@
                 }).join('');
 
                 testReviewContainer.innerHTML = `
-                    <h2 class="text-3xl font-bold text-gray-800 mb-4">${test.category} Тест - Результаты</h5>
+                    <h2 class="text-3xl font-bold text-gray-800 mb-4">Результаты теста: ${test.category}</h5>
                     <div class="bg-gray-100 p-4 rounded-lg mb-6">
                         <p class="font-semibold">Дата: ${test.date}</p>
                         <p class="font-semibold">Сложность: ${test.difficulty}</p>
                         <p class="font-semibold">Правильных ответов: ${test.correctCount} из ${test.totalQuestions}</p>
-                        <p class="text-xs text-gray-500 mt-2">ID Теста: ${test.id}</p>
                     </div>
                     ${reviewHtml}
                 `;
@@ -1482,7 +1481,6 @@
             // Initially display the login screen. The setupAppUI function will hide it later if auth is ready.
             loginScreen.style.display = 'block';
             appContent.style.display = 'none';
-        })();
     </script>
 </body>
 </html>
