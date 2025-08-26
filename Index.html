@@ -1463,7 +1463,7 @@
                             await deleteDoc(testRef);
                             console.log("Test successfully deleted from Firestore.");
                         } catch (e) {
-                            console.error("Error removing test from Firestore: ", e);
+                            console.error("Error removing test from Firestore:", e);
                         } finally {
                             firestoreLoadingOverlay.style.display = 'none';
                         }
