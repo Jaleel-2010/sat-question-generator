@@ -367,7 +367,7 @@
         // Import Firebase SDKs
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, deleteDoc, collection, query, onSnapshot, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, deleteDoc, collection, query, onSnapshot, getDoc, getDocs, serverTimestamp, orderBy, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // ===================================================================================================
         // === ИСПРАВЛЕНО: КОНФИГУРАЦИЯ FIREBASE =============================================================
@@ -388,7 +388,7 @@
         // === НЕ МЕНЯЙТЕ НИЧЕГО НИЖЕ ЭТОЙ СТРОКИ =============================================================
         // ===================================================================================================
 
-        const apiKey = firebaseConfig.apiKey;
+        const apiKey = "";
         
         // Get all the DOM elements
         const loginScreen = document.getElementById('loginScreen');
@@ -431,6 +431,15 @@
             "Standard English Conventions": "standard_english_conventions"
         };
         const labels = ['A', 'B', 'C', 'D'];
+        const categoryTitles = Object.keys(categories);
+        const categoryKeys = Object.values(categories);
+        const questionTypes = {
+            "information_ideas": ["Direct Questions", "Inference Questions", "Main Idea Questions", "Figure based Questions", "Strengthen Weaken Questions", "Poem based Questions", "Character Descriptions"],
+            "craft_structure": ["Vocabulary in Context", "Primary Purpose Questions", "Purpose of a portion Questions", "Structure Questions", "Cross-text Connection Questions", "Quotes Illustrate Questions"],
+            "expression_ideas": ["Transition Question", "Goal based Questions"],
+            "standard_english_conventions": ["Subject verb agreement", "Subject pronoun agreement", "Comma subject rule", "Punctuation on the SAT", "Apostrophe", "Listing", "Introduction of a list or description", "Comparison", "Tense"]
+        };
+
 
         // Global state to manage questions and current position
         let allGeneratedQuestions = {};
@@ -451,10 +460,8 @@
 
         // Inactivity timer variables
         let inactivityTimer;
-        const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
-        
-        // Countdown timer variables
         let generationCountdownInterval;
+        const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
         const GENERATION_COUNTDOWN_SECONDS = 90;
 
         // --- Firebase Initialization and Auth ---
@@ -496,7 +503,7 @@
                 <p class="mt-2 text-sm text-red-600">Пожалуйста, проверьте консоль разработчика для получения подробной информации об ошибке.</p>
             </div>`;
         }
-
+        
         // --- NEW: Function to robustly parse the API response to handle non-JSON text ---
         function parseApiResponse(text) {
             try {
@@ -749,6 +756,8 @@
         
         // Function to start the generation countdown timer
         function startGenerationCountdown() {
+            // Fix: Clear previous interval before starting a new one
+            clearInterval(generationCountdownInterval);
             let timeLeft = GENERATION_COUNTDOWN_SECONDS;
             const timerElement = document.getElementById('timer');
             timerElement.textContent = `Осталось времени: ${timeLeft} сек.`;
@@ -940,7 +949,7 @@
                         }
                     };
                     
-                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${firebaseConfig.apiKey}`;
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
                     let prompt;
                     switch (categoryKey) {
@@ -1047,7 +1056,7 @@
                     }
                 } catch (error) {
                     console.error(`Ошибка генерации вопросов для ${categoryTitle} (Уровень: ${difficulty}):`, error);
-                    throw new Error(`Не удалось сгенерировать вопросы.`);
+                    throw new Error(`Не удалось сгенестрировать вопросы.`);
                 }
             }
 
@@ -1307,7 +1316,7 @@
                     category: Object.keys(categories).find(key => categories[key] === categoriesArray[0]),
                     correctCount: completedQuestions.filter(q => q.isCorrect).length,
                     totalQuestions: completedQuestions.length,
-                    createdAt: new Date()
+                    createdAt: serverTimestamp()
                 };
 
                 const testRef = doc(db, `artifacts/${appId}/users/${userId}/completedTests`, newTest.id);
@@ -1334,7 +1343,7 @@
                     return;
                 }
 
-                const q = query(collection(db, `artifacts/${appId}/users/${userId}/completedTests`));
+                const q = query(collection(db, `artifacts/${appId}/users/${userId}/completedTests`), orderBy('createdAt', 'desc'));
                 
                 // Use onSnapshot for real-time updates
                 onSnapshot(q, (querySnapshot) => {
@@ -1343,7 +1352,7 @@
                         tests.push(doc.data());
                     });
                     // Sort by creation date descending
-                    tests.sort((a, b) => b.createdAt.toDate() - a.createdAt.toDate());
+                    // tests.sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate()); // Сортировка перенесена на уровень запроса
 
                     testsListContainer.innerHTML = '';
                     if (tests.length === 0) {
@@ -1412,7 +1421,7 @@
                     }).join('');
                     
                     return `
-                        <div id="question-card-${number - 1}" class="completed-test-details-question-card">
+                        <div id="question-card-${index}" class="completed-test-details-question-card">
                             <p class="text-md font-semibold mb-2">Вопрос ${index + 1}:</p>
                             ${graphicHtml}
                             <p class="question-passage">${passageHtml}</p>
