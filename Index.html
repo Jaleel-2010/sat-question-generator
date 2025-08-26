@@ -373,8 +373,16 @@
         // === ИСПРАВЛЕНО: КОНФИГУРАЦИЯ FIREBASE =============================================================
         // === Теперь используются переменные, предоставленные средой Canvas. ================================
         // ===================================================================================================
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : null);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = {
+            apiKey: "AIzaSyBF1CIivfHlX8O1a3bFO8aIEHwwdTxnUtA",
+            authDomain: "jaleels-verbalsat-generator.firebaseapp.com",
+            projectId: "jaleels-verbalsat-generator",
+            storageBucket: "jaleels-verbalsat-generator.firebasestorage.app",
+            messagingSenderId: "274566149454",
+            appId: "1:274566149454:web:094849957d81ec3af91a1f",
+            measurementId: "G-4RG9BE0BB3"
+        };
+        const appId = "default-app-id";
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         // ===================================================================================================
         // === НЕ МЕНЯЙТЕ НИЧЕГО НИЖЕ ЭТОЙ СТРОКИ =============================================================
@@ -1474,7 +1482,6 @@
             // Initially display the login screen. The setupAppUI function will hide it later if auth is ready.
             loginScreen.style.display = 'block';
             appContent.style.display = 'none';
-        
     </script>
 </body>
 </html>
