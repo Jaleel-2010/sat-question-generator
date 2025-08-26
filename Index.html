@@ -388,7 +388,7 @@
         // === НЕ МЕНЯЙТЕ НИЧЕГО НИЖЕ ЭТОЙ СТРОКИ =============================================================
         // ===================================================================================================
 
-        const apiKey = "";
+  const apiKey = process.env.GEMINI_API_KEY || "";
         
         // Get all the DOM elements
         const loginScreen = document.getElementById('loginScreen');
@@ -1391,4 +1391,5 @@
     </script>
 </body>
 </html>
+
 
