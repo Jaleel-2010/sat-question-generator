@@ -1,0 +1,12 @@
+{
+  "name": "sat-quiz-generator",
+  "version": "1.0.0",
+  "description": "Генератор вопросов SAT",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'Build completed'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
