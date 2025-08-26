@@ -1017,48 +1017,38 @@
                         break;
                 }
 
-                do {
-                    try {
-                        const payload = {
-                            contents: [{ role: "user", parts: [{ text: prompt }] }],
-                            generationConfig: {
-                                responseMimeType: "application/json",
-                                responseSchema: responseSchema
-                            }
-                        };
-                        
-                        const response = await fetch(apiUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
-                        
-                        if (!response.ok) {
-                            const errorDetails = await response.text();
-                            throw new Error(`HTTP Error: ${response.status} ${response.statusText}. Details: ${errorDetails}`);
+                try {
+                    const payload = {
+                        contents: [{ role: "user", parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: responseSchema
                         }
-                        
-                        const result = await response.json();
-                        questionsArray = parseApiResponse(result?.candidates?.[0]?.content?.parts?.[0]?.text || "[]");
-                        
-                        if (Array.isArray(questionsArray) && questionsArray.length === numberOfQuestions) {
-                            return questionsArray;
-                        } else {
-                            throw new Error(`API не вернул ровно ${numberOfQuestions} вопросов. Получено: ${questionsArray.length}.`);
-                        }
-                    } catch (error) {
-                        console.error(`Ошибка генерации вопросов для ${categoryTitle} (Уровень: ${difficulty}):`, error);
-                        retries++;
-                        if (retries >= MAX_RETRIES) {
-                            throw new Error(`Не удалось сгенерировать правильное количество вопросов после ${MAX_RETRIES} попыток.`);
-                        }
-                        const delay = BASE_DELAY_MS * Math.pow(2, retries) + (Math.random() * 100);
-                        console.warn(`Повторная попытка генерации вопросов для ${categoryTitle} через ${delay} мс (попытка ${retries + 1}/${MAX_RETRIES})...`);
-                        await new Promise(resolve => setTimeout(resolve, delay));
+                    };
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        const errorDetails = await response.text();
+                        throw new Error(`HTTP Error: ${response.status} ${response.statusText}. Details: ${errorDetails}`);
                     }
-                } while (retries < MAX_RETRIES);
-
-                return null; // Should not be reached due to the throw above, but as a fallback.
+                    
+                    const result = await response.json();
+                    const questionsArray = parseApiResponse(result?.candidates?.[0]?.content?.parts?.[0]?.text || "[]");
+                    
+                    if (Array.isArray(questionsArray) && questionsArray.length > 0) {
+                        return questionsArray;
+                    } else {
+                        throw new Error(`API не вернул ни одного вопроса.`);
+                    }
+                } catch (error) {
+                    console.error(`Ошибка генерации вопросов для ${categoryTitle} (Уровень: ${difficulty}):`, error);
+                    throw new Error(`Не удалось сгенерировать вопросы.`);
+                }
             }
 
             // --- Core Quiz Logic ---
